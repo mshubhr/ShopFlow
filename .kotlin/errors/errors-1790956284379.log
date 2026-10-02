@@ -1,0 +1,5 @@
+kotlin version: 2.3.0
+error message: Daemon compilation failed: Java heap space
+java.lang.OutOfMemoryError: Java heap space
+
+
