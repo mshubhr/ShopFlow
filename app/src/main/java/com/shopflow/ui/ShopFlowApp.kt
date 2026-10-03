@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -242,21 +243,18 @@ private fun ProductCard(product: Product, onClick: () -> Unit) {
             contentScale = ContentScale.Crop
         )
         Column(Modifier.padding(12.dp)) {
-            Box(
+            Text(
+                text = product.title,
                 modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
                     .fillMaxWidth()
-                    .height(63.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = product.title,
-                    modifier = Modifier.fillMaxWidth(),
-                    fontWeight = FontWeight.SemiBold,
-                    textAlign = TextAlign.Center,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
+                    .height(63.dp)
+                    .wrapContentHeight(Alignment.CenterVertically),
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
             Spacer(Modifier.height(6.dp))
             Text(price(product.price), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
             Rating(product.rating)
