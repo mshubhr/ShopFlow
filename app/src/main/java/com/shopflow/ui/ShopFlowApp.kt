@@ -54,6 +54,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -241,13 +242,21 @@ private fun ProductCard(product: Product, onClick: () -> Unit) {
             contentScale = ContentScale.Crop
         )
         Column(Modifier.padding(12.dp)) {
-            Text(
-                text = product.title,
-                modifier = Modifier.height(48.dp),
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(63.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = product.title,
+                    modifier = Modifier.fillMaxWidth(),
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
             Spacer(Modifier.height(6.dp))
             Text(price(product.price), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
             Rating(product.rating)
