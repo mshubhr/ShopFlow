@@ -251,7 +251,6 @@ private fun ProductCard(product: Product, onClick: () -> Unit) {
                     .height(63.dp)
                     .wrapContentHeight(Alignment.CenterVertically),
                 fontWeight = FontWeight.SemiBold,
-                textAlign = TextAlign.Center,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
