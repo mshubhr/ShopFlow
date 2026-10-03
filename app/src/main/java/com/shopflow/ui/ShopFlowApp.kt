@@ -241,7 +241,13 @@ private fun ProductCard(product: Product, onClick: () -> Unit) {
             contentScale = ContentScale.Crop
         )
         Column(Modifier.padding(12.dp)) {
-            Text(product.title, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(
+                text = product.title,
+                modifier = Modifier.height(48.dp),
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
             Spacer(Modifier.height(6.dp))
             Text(price(product.price), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
             Rating(product.rating)
