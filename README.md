@@ -35,7 +35,7 @@ when the device is offline.
 
 ### Prerequisites
 - **Android Studio**: Android Studio Ladybug / Meerkat (or newer recommended)
-- **JDK**: Java 17+ / Java 21+ (configured via Gradle toolchain / Android Studio JBR)
+- **JDK**: Java 11+ (configured via Gradle toolchain / Android Studio JBR)
 - **Android SDK**:
   - `compileSdk`: **37**
   - `targetSdk`: **37**
