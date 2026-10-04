@@ -45,6 +45,27 @@ class ProductRepository(
         PageLoadResult(hasMore = nextSkip < totalProducts)
     }
 
+    suspend fun searchProducts(query: String): List<Product> {
+        val trimmed = query.trim()
+        if (trimmed.isBlank()) return emptyList()
+        return try {
+            val response = api.searchProducts(query = trimmed, limit = 0)
+            val entities = response.products.map(ProductDto::toEntity)
+            productDao.insertAll(entities)
+            entities.map(ProductEntity::toProduct)
+        } catch (e: Exception) {
+            val localResults = productDao.searchLocally(trimmed)
+            if (localResults.isNotEmpty()) {
+                localResults.map(ProductEntity::toProduct)
+            } else {
+                throw e
+            }
+        }
+    }
+
+    suspend fun findProductById(productId: Int): Product? =
+        productDao.findById(productId)?.toProduct()
+
     suspend fun addToCart(product: Product): CartMutationResult {
         val existing = cartDao.findById(product.id)
         if ((existing?.quantity ?: 0) >= product.stock) {

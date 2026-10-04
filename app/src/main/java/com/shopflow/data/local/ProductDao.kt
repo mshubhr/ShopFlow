@@ -18,6 +18,16 @@ interface ProductDao {
     @Query("SELECT * FROM products WHERE id = :productId")
     suspend fun findById(productId: Int): ProductEntity?
 
+    @Query("""
+        SELECT * FROM products 
+        WHERE title LIKE '%' || :query || '%' 
+           OR category LIKE '%' || :query || '%' 
+           OR brand LIKE '%' || :query || '%' 
+           OR description LIKE '%' || :query || '%'
+        ORDER BY title COLLATE NOCASE
+    """)
+    suspend fun searchLocally(query: String): List<ProductEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(products: List<ProductEntity>)
 

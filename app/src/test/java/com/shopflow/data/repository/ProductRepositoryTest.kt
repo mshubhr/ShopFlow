@@ -95,4 +95,29 @@ class ProductRepositoryTest {
         val itemsAfterDecrement = repository.cartItems.first()
         assertTrue(itemsAfterDecrement.isEmpty())
     }
+
+    @Test
+    fun searchProducts_cachesRemoteResultsInRoom() = runTest {
+        val remoteProduct = ProductDto(
+            id = 55,
+            title = "Galaxy Phone",
+            description = "High end",
+            price = 799.99,
+            rating = 4.7,
+            category = "smartphones",
+            brand = "Samsung",
+            stock = 8,
+            thumbnail = "samsung.png"
+        )
+        fakeApi.productsToReturn = listOf(remoteProduct)
+
+        val results = repository.searchProducts("Galaxy")
+        assertEquals(1, results.size)
+        assertEquals("Galaxy Phone", results[0].title)
+
+        // Verify inserted into Room
+        val fromDb = fakeProductDao.findById(55)
+        org.junit.Assert.assertNotNull(fromDb)
+        assertEquals("Galaxy Phone", fromDb?.title)
+    }
 }

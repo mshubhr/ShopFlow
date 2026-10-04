@@ -23,6 +23,14 @@ class FakeProductDao : ProductDao {
     override suspend fun findById(productId: Int): ProductEntity? =
         productsState.value[productId]
 
+    override suspend fun searchLocally(query: String): List<ProductEntity> =
+        productsState.value.values.filter {
+            it.title.contains(query, ignoreCase = true) ||
+            it.category.contains(query, ignoreCase = true) ||
+            it.brand.orEmpty().contains(query, ignoreCase = true) ||
+            it.description.contains(query, ignoreCase = true)
+        }.sortedBy { it.title.lowercase() }
+
     override suspend fun insertAll(products: List<ProductEntity>) {
         productsState.value += products.associateBy { it.id }
     }
@@ -58,6 +66,20 @@ class FakeDummyJsonApi(
         return ProductResponse(
             products = page,
             total = productsToReturn.size
+        )
+    }
+
+    override suspend fun searchProducts(query: String, limit: Int, skip: Int): ProductResponse {
+        val filtered = productsToReturn.filter {
+            it.title.contains(query, ignoreCase = true) ||
+            it.category.contains(query, ignoreCase = true) ||
+            it.brand.orEmpty().contains(query, ignoreCase = true) ||
+            it.description.contains(query, ignoreCase = true)
+        }
+        val paged = if (limit > 0) filtered.drop(skip).take(limit) else filtered.drop(skip)
+        return ProductResponse(
+            products = paged,
+            total = filtered.size
         )
     }
 }
