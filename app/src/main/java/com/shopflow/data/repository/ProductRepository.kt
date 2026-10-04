@@ -1,5 +1,7 @@
-package com.shopflow.data
+package com.shopflow.data.repository
 
+import com.shopflow.data.CartItem
+import com.shopflow.data.Product
 import com.shopflow.data.local.CartDao
 import com.shopflow.data.local.CartItemEntity
 import com.shopflow.data.local.ProductDao
@@ -10,14 +12,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-
-data class PageLoadResult(val hasMore: Boolean)
-
-sealed interface CartMutationResult {
-    data object Updated : CartMutationResult
-    data class StockLimitReached(val stock: Int) : CartMutationResult
-    data object ProductUnavailable : CartMutationResult
-}
 
 class ProductRepository(
     private val api: DummyJsonApi, private val productDao: ProductDao, private val cartDao: CartDao

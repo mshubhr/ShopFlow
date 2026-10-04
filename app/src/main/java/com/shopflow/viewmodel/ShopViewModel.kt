@@ -4,12 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.shopflow.data.Product
-import com.shopflow.data.ProductRepository
+import com.shopflow.data.repository.ProductRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.IOException
@@ -50,7 +49,7 @@ class ShopViewModel(private val repository: ProductRepository) : ViewModel() {
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CatalogUiState())
 
     val cartUiState: StateFlow<CartUiState> = combine(repository.cartItems, repository.products) { items, products ->
-        CartUiState(items, products.associate { it.id to it.stock })
+        CartUiState(items, products.associateBy(Product::id, Product::stock))
     }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CartUiState())
 

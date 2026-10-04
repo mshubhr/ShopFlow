@@ -8,7 +8,7 @@ import coil3.SingletonImageLoader
 import coil3.disk.DiskCache
 import coil3.memory.MemoryCache
 import coil3.request.crossfade
-import com.shopflow.data.ProductRepository
+import com.shopflow.data.repository.ProductRepository
 import com.shopflow.data.local.ShopFlowDatabase
 import com.shopflow.data.remote.DummyJsonApi
 import okhttp3.OkHttpClient

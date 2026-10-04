@@ -10,7 +10,7 @@ ShopFlow is a modern Android e-commerce application built with Jetpack Compose, 
 3. [Libraries Used](#libraries-used)
 4. [Local Storage Approach](#local-storage-approach)
 5. [Important Design Decisions](#important-design-decisions)
-6. [Known Limitations](#known-limitations)
+6. [Production Scope](#production-scope)
 
 ---
 
@@ -72,7 +72,7 @@ ShopFlow adheres to official **Android Architecture Guidelines**, implementing a
 ├────────────────────────────────────────────────────────┤
 │                      ViewModel                         │
 │                    ShopViewModel                       │
-│    • Combines DB flows with in-memory search query      │
+│    • Combines DB flows with in-memory search query     │
 │    • Exposes catalogUiState & cartUiState              │
 │    • Dispatches user actions to repository             │
 ├────────────────────────────────────────────────────────┤
