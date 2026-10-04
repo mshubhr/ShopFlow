@@ -140,11 +140,13 @@ fun ProductDetailScreen(
                     }
                     item(key = "cta", contentType = "cta") {
                         Button(
-                            onClick = { onAddToCart(item) }, modifier = Modifier.fillMaxWidth()
+                            onClick = { onAddToCart(item) },
+                            enabled = cart.canIncrease(item.id),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
                             Icon(Icons.Default.Add, contentDescription = null)
                             Spacer(Modifier.width(8.dp))
-                            Text("Add to cart")
+                            Text(if (cart.canIncrease(item.id)) "Add to cart" else "Stock limit reached")
                         }
                     }
                 }

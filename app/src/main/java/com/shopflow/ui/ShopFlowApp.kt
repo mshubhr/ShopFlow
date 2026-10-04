@@ -33,6 +33,7 @@ fun ShopFlowApp(viewModel: ShopViewModel) {
         cartUiState = cartUiState,
         onQueryChanged = viewModel::setQuery,
         onRefreshProducts = viewModel::refreshProducts,
+        onLoadNextPage = viewModel::loadNextPage,
         getProduct = { id -> catalogUiState.products.find { it.id == id } },
         onAddToCart = viewModel::addToCart,
         onChangeQuantity = viewModel::changeQuantity,
@@ -46,6 +47,7 @@ fun ShopFlowApp(
     cartUiState: CartUiState,
     onQueryChanged: (String) -> Unit = {},
     onRefreshProducts: () -> Unit = {},
+    onLoadNextPage: () -> Unit = {},
     getProduct: (Int) -> Product? = { id -> catalogUiState.products.find { it.id == id } },
     onAddToCart: (Product) -> Unit = {},
     onChangeQuantity: (productId: Int, delta: Int) -> Unit = { _, _ -> },
@@ -62,6 +64,7 @@ fun ShopFlowApp(
                     cart = cartUiState,
                     onQueryChanged = onQueryChanged,
                     onRefreshProducts = onRefreshProducts,
+                    onLoadNextPage = onLoadNextPage,
                     openCart = { backStack.add(CartRoute) },
                     openProduct = { backStack.add(ProductRoute(it)) })
             }

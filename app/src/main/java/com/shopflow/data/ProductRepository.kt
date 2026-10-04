@@ -8,10 +8,24 @@ import com.shopflow.data.remote.DummyJsonApi
 import com.shopflow.data.remote.ProductDto
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+
+data class PageLoadResult(val hasMore: Boolean)
+
+sealed interface CartMutationResult {
+    data object Updated : CartMutationResult
+    data class StockLimitReached(val stock: Int) : CartMutationResult
+    data object ProductUnavailable : CartMutationResult
+}
 
 class ProductRepository(
     private val api: DummyJsonApi, private val productDao: ProductDao, private val cartDao: CartDao
 ) {
+    private val paginationMutex = Mutex()
+    private var nextSkip = 0
+    private var totalProducts = Int.MAX_VALUE
+
     val products: Flow<List<Product>> = productDao.observeAll().map { entities ->
         entities.map(ProductEntity::toProduct)
     }
@@ -20,12 +34,28 @@ class ProductRepository(
         entities.map(CartItemEntity::toCartItem)
     }
 
-    suspend fun refreshProducts() {
-        productDao.replaceAll(api.getProducts(limit = 0).products.map(ProductDto::toEntity))
+    suspend fun refreshProducts(): PageLoadResult = paginationMutex.withLock {
+        val response = api.getProducts(limit = PAGE_SIZE, skip = 0)
+        productDao.replaceAll(response.products.map(ProductDto::toEntity))
+        nextSkip = response.products.size
+        totalProducts = response.total
+        PageLoadResult(hasMore = nextSkip < totalProducts)
     }
 
-    suspend fun addToCart(product: Product) {
+    suspend fun loadNextPage(): PageLoadResult = paginationMutex.withLock {
+        if (nextSkip >= totalProducts) return@withLock PageLoadResult(hasMore = false)
+        val response = api.getProducts(limit = PAGE_SIZE, skip = nextSkip)
+        productDao.insertAll(response.products.map(ProductDto::toEntity))
+        nextSkip += response.products.size
+        totalProducts = response.total
+        PageLoadResult(hasMore = nextSkip < totalProducts)
+    }
+
+    suspend fun addToCart(product: Product): CartMutationResult {
         val existing = cartDao.findById(product.id)
+        if ((existing?.quantity ?: 0) >= product.stock) {
+            return CartMutationResult.StockLimitReached(product.stock)
+        }
         cartDao.upsert(
             CartItemEntity(
                 productId = product.id,
@@ -35,15 +65,28 @@ class ProductRepository(
                 quantity = (existing?.quantity ?: 0) + 1
             )
         )
+        return CartMutationResult.Updated
     }
 
-    suspend fun changeQuantity(productId: Int, delta: Int) {
-        val existing = cartDao.findById(productId) ?: return
+    suspend fun changeQuantity(productId: Int, delta: Int): CartMutationResult {
+        val existing = cartDao.findById(productId) ?: return CartMutationResult.ProductUnavailable
         val newQuantity = existing.quantity + delta
-        if (newQuantity <= 0) cartDao.delete(productId) else cartDao.upsert(existing.copy(quantity = newQuantity))
+        if (newQuantity <= 0) {
+            cartDao.delete(productId)
+            return CartMutationResult.Updated
+        }
+        val stock = productDao.findById(productId)?.stock
+            ?: return CartMutationResult.ProductUnavailable
+        if (newQuantity > stock) return CartMutationResult.StockLimitReached(stock)
+        cartDao.upsert(existing.copy(quantity = newQuantity))
+        return CartMutationResult.Updated
     }
 
     suspend fun removeFromCart(productId: Int) = cartDao.delete(productId)
+
+    private companion object {
+        const val PAGE_SIZE = 24
+    }
 }
 
 private fun ProductDto.toEntity() = ProductEntity(

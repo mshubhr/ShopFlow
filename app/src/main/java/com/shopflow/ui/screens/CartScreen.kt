@@ -85,6 +85,7 @@ fun CartScreen(
                     CartItemCard(
                         item = item,
                         increase = { onChangeQuantity(item.productId, 1) },
+                        canIncrease = state.canIncrease(item.productId),
                         decrease = { onChangeQuantity(item.productId, -1) },
                         remove = { onRemoveFromCart(item.productId) })
                 }
@@ -95,7 +96,11 @@ fun CartScreen(
 
 @Composable
 private fun CartItemCard(
-    item: CartItem, increase: () -> Unit, decrease: () -> Unit, remove: () -> Unit
+    item: CartItem,
+    increase: () -> Unit,
+    canIncrease: Boolean,
+    decrease: () -> Unit,
+    remove: () -> Unit
 ) {
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
         Row(
@@ -139,7 +144,7 @@ private fun CartItemCard(
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.width(24.dp)
                     )
-                    IconButton(onClick = increase) {
+                    IconButton(onClick = increase, enabled = canIncrease) {
                         Icon(
                             Icons.Default.Add, contentDescription = "Increase quantity"
                         )

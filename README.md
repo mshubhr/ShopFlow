@@ -149,9 +149,9 @@ ShopFlow uses **Room Database** (`ShopFlowDatabase`, version 1) backed by SQLite
 
 ---
 
-## Known Limitations
+## Production Scope
 
-- **Pagination**: The DummyJSON API call fetches all products using `limit = 0`. In a production scale deployment with tens of thousands of items, paging with the Android Paging 3 library would be preferred.
-- **Stock Validation against Live Inventory**: Adding to cart currently increments locally without validating against remote real-time inventory adjustments before checkout.
-- **Checkout / Payment Gateway**: Checkout flow and payment processing are out of scope; cart demonstrates local management and totals calculation.
-- **Sync Conflict Resolution**: Product catalog refresh overwrites local catalog rows with the remote response. While optimal for read-heavy public catalogs, two-way synchronizable entities would require conflict resolution timestamps or ETags.
+- **Incremental catalog loading**: The catalog now requests DummyJSON in 24-item pages using `limit` and `skip`, appending each page to Room while keeping cached pages available offline. For very large catalogs, migrate this behavior to Paging 3 with a Room `RemoteMediator`.
+- **Cached-stock enforcement**: Cart additions and quantity increases are capped at the product stock recorded in the most recently synced catalog. The app cannot perform real-time stock reservation because DummyJSON does not expose a transactional inventory API.
+- **Checkout / Payment Gateway**: Checkout and payment processing still require a merchant account, provider SDK, backend order service, and server-side payment verification. They cannot be implemented securely against DummyJSON alone.
+- **Sync conflict resolution**: Products are a server-owned, read-only catalog cache, so there are no local product edits to conflict with refreshes. If products become editable or two-way synced, add server revisions, ETags, or timestamps and a defined merge policy.

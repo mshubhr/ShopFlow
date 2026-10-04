@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -41,6 +42,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -70,6 +72,7 @@ fun CatalogScreen(
     cart: CartUiState,
     onQueryChanged: (String) -> Unit,
     onRefreshProducts: () -> Unit,
+    onLoadNextPage: () -> Unit,
     openCart: () -> Unit,
     openProduct: (Int) -> Unit
 ) {
@@ -102,14 +105,17 @@ fun CatalogScreen(
                     label = { Text("Search products") })
             }
             Spacer(Modifier.height(8.dp))
-            CatalogContent(state, onRefreshProducts, openProduct)
+            CatalogContent(state, onRefreshProducts, onLoadNextPage, openProduct)
         }
     }
 }
 
 @Composable
 private fun CatalogContent(
-    state: CatalogUiState, retry: () -> Unit, openProduct: (Int) -> Unit
+    state: CatalogUiState,
+    retry: () -> Unit,
+    loadNextPage: () -> Unit,
+    openProduct: (Int) -> Unit
 ) {
     when {
         state.isLoading && state.products.isEmpty() -> {
@@ -141,6 +147,17 @@ private fun CatalogContent(
             val coroutineScope = rememberCoroutineScope()
             val showScrollToTop by remember {
                 derivedStateOf { gridState.firstVisibleItemIndex > 3 }
+            }
+            val shouldLoadMore by remember {
+                derivedStateOf {
+                    state.query.isBlank() &&
+                        state.canLoadMore &&
+                        !state.isLoadingMore &&
+                        (gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1) >= state.products.lastIndex - 5
+                }
+            }
+            LaunchedEffect(shouldLoadMore) {
+                if (shouldLoadMore) loadNextPage()
             }
 
             Box(modifier = Modifier.fillMaxSize()) {
@@ -197,6 +214,18 @@ private fun CatalogContent(
                             contentType = { "product" }) { product ->
                             ProductCard(
                                 product = product, onClick = { openProduct(product.id) })
+                        }
+                        if (state.isLoadingMore) {
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 20.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("Loading more products...")
+                                }
+                            }
                         }
                     }
                 }

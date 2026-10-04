@@ -17,21 +17,41 @@ import java.io.IOException
 class ShopViewModel(private val repository: ProductRepository) : ViewModel() {
     private val query = MutableStateFlow("")
     private val isLoading = MutableStateFlow(true)
+    private val isLoadingMore = MutableStateFlow(false)
+    private val canLoadMore = MutableStateFlow(false)
     private val errorMessage = MutableStateFlow<String?>(null)
 
-    val catalogUiState: StateFlow<CatalogUiState> = combine(
-        repository.products, query, isLoading, errorMessage
-    ) { products, searchQuery, loading, error ->
+    private val filteredProducts = combine(repository.products, query) { products, searchQuery ->
         val normalized = searchQuery.trim()
-        val filtered = if (normalized.isBlank()) products else products.filter { product ->
+        if (normalized.isBlank()) products else products.filter { product ->
             product.title.contains(normalized, ignoreCase = true) || product.category.contains(
                 normalized, ignoreCase = true
             ) || product.brand.orEmpty().contains(normalized, ignoreCase = true)
         }
-        CatalogUiState(filtered, searchQuery, loading, error)
+    }
+
+    private val catalogStatus = combine(
+        isLoading, isLoadingMore, canLoadMore, errorMessage
+    ) { loading, loadingMore, hasMore, error ->
+        CatalogStatus(loading, loadingMore, hasMore, error)
+    }
+
+    val catalogUiState: StateFlow<CatalogUiState> = combine(
+        filteredProducts, query, catalogStatus
+    ) { products, searchQuery, status ->
+        CatalogUiState(
+            products = products,
+            query = searchQuery,
+            isLoading = status.isLoading,
+            isLoadingMore = status.isLoadingMore,
+            canLoadMore = status.canLoadMore,
+            errorMessage = status.errorMessage
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CatalogUiState())
 
-    val cartUiState: StateFlow<CartUiState> = repository.cartItems.map(::CartUiState)
+    val cartUiState: StateFlow<CartUiState> = combine(repository.cartItems, repository.products) { items, products ->
+        CartUiState(items, products.associate { it.id to it.stock })
+    }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CartUiState())
 
     init {
@@ -46,10 +66,21 @@ class ShopViewModel(private val repository: ProductRepository) : ViewModel() {
         viewModelScope.launch {
             isLoading.value = true
             errorMessage.value = null
-            runCatching { repository.refreshProducts() }.onFailure {
-                errorMessage.value = errorMessageFor(it)
-            }
+            runCatching { repository.refreshProducts() }
+                .onSuccess { canLoadMore.value = it.hasMore }
+                .onFailure { errorMessage.value = errorMessageFor(it) }
             isLoading.value = false
+        }
+    }
+
+    fun loadNextPage() {
+        if (isLoadingMore.value || !canLoadMore.value) return
+        viewModelScope.launch {
+            isLoadingMore.value = true
+            runCatching { repository.loadNextPage() }
+                .onSuccess { canLoadMore.value = it.hasMore }
+                .onFailure { errorMessage.value = errorMessageFor(it) }
+            isLoadingMore.value = false
         }
     }
 
@@ -70,6 +101,13 @@ class ShopViewModel(private val repository: ProductRepository) : ViewModel() {
         else -> "The catalog could not be updated. Please try again."
     }
 }
+
+private data class CatalogStatus(
+    val isLoading: Boolean,
+    val isLoadingMore: Boolean,
+    val canLoadMore: Boolean,
+    val errorMessage: String?
+)
 
 class ShopViewModelFactory(private val repository: ProductRepository) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
