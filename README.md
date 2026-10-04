@@ -5,12 +5,29 @@ ShopFlow is a modern Android e-commerce application built with Jetpack Compose, 
 ---
 
 ## Table of Contents
-1. [Setup & Build Instructions](#setup--build-instructions)
-2. [Architecture](#architecture)
-3. [Libraries Used](#libraries-used)
-4. [Local Storage Approach](#local-storage-approach)
-5. [Important Design Decisions](#important-design-decisions)
-6. [Production Scope](#production-scope)
+1. [Screenshots](#screenshots)
+2. [Offline Cart](#offline-cart)
+3. [Setup & Build Instructions](#setup--build-instructions)
+4. [Architecture](#architecture)
+5. [Libraries Used](#libraries-used)
+6. [Local Storage Approach](#local-storage-approach)
+7. [Important Design Decisions](#important-design-decisions)
+8. [Production Scope](#production-scope)
+
+---
+
+## Screenshots
+
+| Product Catalog | Product Details | Cart |
+|---|---|---|
+| <img src="docs/images/product_catalog.png" width="250" alt="Product Catalog" /> | <img src="docs/images/product_details.png" width="250" alt="Product Details" /> | <img src="docs/images/cart.png" width="250" alt="Cart" /> |
+
+---
+
+## Offline Cart
+
+The cart is persisted locally using Room and remains fully functional
+when the device is offline.
 
 ---
 
