@@ -10,9 +10,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 class ProductRepository(
-    private val api: DummyJsonApi,
-    private val productDao: ProductDao,
-    private val cartDao: CartDao
+    private val api: DummyJsonApi, private val productDao: ProductDao, private val cartDao: CartDao
 ) {
     val products: Flow<List<Product>> = productDao.observeAll().map { entities ->
         entities.map(ProductEntity::toProduct)
@@ -22,11 +20,8 @@ class ProductRepository(
         entities.map(CartItemEntity::toCartItem)
     }
 
-    fun product(productId: Int): Flow<Product?> = productDao.observeById(productId).map { it?.toProduct() }
-
     suspend fun refreshProducts() {
-        val response = api.getProducts(limit = 0)
-        productDao.replaceAll(response.products.map(ProductDto::toEntity))
+        productDao.replaceAll(api.getProducts(limit = 0).products.map(ProductDto::toEntity))
     }
 
     suspend fun addToCart(product: Product) {
@@ -76,9 +71,5 @@ private fun ProductEntity.toProduct() = Product(
 )
 
 private fun CartItemEntity.toCartItem() = CartItem(
-    productId = productId,
-    title = title,
-    price = price,
-    thumbnail = thumbnail,
-    quantity = quantity
+    productId = productId, title = title, price = price, thumbnail = thumbnail, quantity = quantity
 )

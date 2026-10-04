@@ -1,9 +1,6 @@
-package com.shopflow.data
+package com.shopflow.data.remote
 
-import androidx.compose.runtime.Immutable
-
-@Immutable
-data class Product(
+data class ProductDto(
     val id: Int,
     val title: String,
     val description: String,

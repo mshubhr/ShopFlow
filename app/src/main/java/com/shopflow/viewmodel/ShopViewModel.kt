@@ -3,10 +3,8 @@ package com.shopflow.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.shopflow.data.CartItem
 import com.shopflow.data.Product
 import com.shopflow.data.ProductRepository
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -16,40 +14,24 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.IOException
 
-data class CatalogUiState(
-    val products: List<Product> = emptyList(),
-    val query: String = "",
-    val isLoading: Boolean = true,
-    val errorMessage: String? = null
-)
-
-data class CartUiState(val items: List<CartItem> = emptyList()) {
-    val itemCount: Int get() = items.sumOf(CartItem::quantity)
-    val total: Double get() = items.sumOf { it.price * it.quantity }
-}
-
 class ShopViewModel(private val repository: ProductRepository) : ViewModel() {
     private val query = MutableStateFlow("")
     private val isLoading = MutableStateFlow(true)
     private val errorMessage = MutableStateFlow<String?>(null)
 
     val catalogUiState: StateFlow<CatalogUiState> = combine(
-        repository.products,
-        query,
-        isLoading,
-        errorMessage
+        repository.products, query, isLoading, errorMessage
     ) { products, searchQuery, loading, error ->
         val normalized = searchQuery.trim()
         val filtered = if (normalized.isBlank()) products else products.filter { product ->
-            product.title.contains(normalized, ignoreCase = true) ||
-                product.category.contains(normalized, ignoreCase = true) ||
-                product.brand.orEmpty().contains(normalized, ignoreCase = true)
+            product.title.contains(normalized, ignoreCase = true) || product.category.contains(
+                normalized, ignoreCase = true
+            ) || product.brand.orEmpty().contains(normalized, ignoreCase = true)
         }
         CatalogUiState(filtered, searchQuery, loading, error)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CatalogUiState())
 
-    val cartUiState: StateFlow<CartUiState> = repository.cartItems
-        .map(::CartUiState)
+    val cartUiState: StateFlow<CartUiState> = repository.cartItems.map(::CartUiState)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CartUiState())
 
     init {
@@ -64,13 +46,12 @@ class ShopViewModel(private val repository: ProductRepository) : ViewModel() {
         viewModelScope.launch {
             isLoading.value = true
             errorMessage.value = null
-            runCatching { repository.refreshProducts() }
-                .onFailure { errorMessage.value = errorMessageFor(it) }
+            runCatching { repository.refreshProducts() }.onFailure {
+                errorMessage.value = errorMessageFor(it)
+            }
             isLoading.value = false
         }
     }
-
-    fun product(productId: Int): Flow<Product?> = repository.product(productId)
 
     fun addToCart(product: Product) {
         viewModelScope.launch { repository.addToCart(product) }
@@ -91,9 +72,11 @@ class ShopViewModel(private val repository: ProductRepository) : ViewModel() {
 }
 
 class ShopViewModelFactory(private val repository: ProductRepository) : ViewModelProvider.Factory {
-    @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        require(modelClass.isAssignableFrom(ShopViewModel::class.java))
-        return ShopViewModel(repository) as T
+        if (modelClass.isAssignableFrom(ShopViewModel::class.java)) {
+            return modelClass.cast(ShopViewModel(repository))
+                ?: throw IllegalArgumentException("Unable to cast ViewModel to ${modelClass.name}")
+        }
+        throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
     }
 }

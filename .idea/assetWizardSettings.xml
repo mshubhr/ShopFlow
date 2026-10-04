@@ -80,6 +80,7 @@
                                               <map>
                                                 <entry key="color" value="000000" />
                                                 <entry key="imagePath" value="$USER_HOME$/Downloads/shopFlow.png" />
+                                                <entry key="scalingPercent" value="81" />
                                               </map>
                                             </option>
                                           </PersistentState>
@@ -155,7 +156,7 @@
                                   </option>
                                   <option name="values">
                                     <map>
-                                      <entry key="previewDensity" value="xxxhdpi" />
+                                      <entry key="previewDensity" value="xxhdpi" />
                                     </map>
                                   </option>
                                 </PersistentState>
@@ -323,7 +324,7 @@
                                   </option>
                                   <option name="values">
                                     <map>
-                                      <entry key="previewDensity" value="xxxhdpi" />
+                                      <entry key="previewDensity" value="xxhdpi" />
                                     </map>
                                   </option>
                                 </PersistentState>
