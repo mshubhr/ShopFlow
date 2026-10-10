@@ -59,6 +59,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.shopflow.data.Product
+import com.shopflow.data.remote.DataState
 import com.shopflow.ui.components.CartButton
 import com.shopflow.ui.components.EmptyState
 import com.shopflow.ui.components.Rating
@@ -121,145 +122,156 @@ fun CatalogScreen(
 
 @Composable
 private fun CatalogContent(
-    state: CatalogUiState,
-    retry: () -> Unit,
-    loadNextPage: () -> Unit,
-    openProduct: (Int) -> Unit
+    state: CatalogUiState, retry: () -> Unit, loadNextPage: () -> Unit, openProduct: (Int) -> Unit
 ) {
-    when {
-        state.isLoading && state.products.isEmpty() -> {
-            Box(
-                Modifier.fillMaxSize(), contentAlignment = Alignment.Center
-            ) { Text(if (state.query.isBlank()) "Loading products..." else "Searching products...") }
-        }
-
-        state.products.isEmpty() && state.errorMessage != null -> {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.padding(24.dp)
-                ) {
-                    Text(state.errorMessage, style = MaterialTheme.typography.bodyLarge)
-                    Spacer(Modifier.height(16.dp))
-                    Button(onClick = retry) { Text("Retry") }
-                }
+    when (val dataState = state.dataState) {
+        is DataState.Loading -> {
+            if (state.products.isEmpty()) {
+                Box(
+                    Modifier.fillMaxSize(), contentAlignment = Alignment.Center
+                ) { Text(if (state.query.isBlank()) "Loading products..." else "Searching products...") }
+            } else {
+                CatalogGrid(state, retry, loadNextPage, openProduct)
             }
         }
 
-        state.products.isEmpty() -> EmptyState(
-            title = if (state.query.isBlank()) "No products available" else "No matching products",
-            action = if (state.query.isBlank()) retry else null
-        )
-
-        else -> {
-            val gridState = rememberLazyGridState()
-            val coroutineScope = rememberCoroutineScope()
-            val showScrollToTop by remember {
-                derivedStateOf { gridState.firstVisibleItemIndex > 3 }
-            }
-            val shouldLoadMore by remember {
-                derivedStateOf {
-                    state.query.isBlank() &&
-                        state.canLoadMore &&
-                        !state.isLoadingMore &&
-                        (gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1) >= state.products.lastIndex - 5
+        is DataState.Error -> {
+            if (state.products.isEmpty()) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(24.dp)
+                    ) {
+                        Text(dataState.message, style = MaterialTheme.typography.bodyLarge)
+                        Spacer(Modifier.height(16.dp))
+                        Button(onClick = retry) { Text("Retry") }
+                    }
                 }
+            } else {
+                CatalogGrid(state, retry, loadNextPage, openProduct)
             }
-            LaunchedEffect(shouldLoadMore) {
-                if (shouldLoadMore) loadNextPage()
-            }
+        }
 
-            Box(modifier = Modifier.fillMaxSize()) {
-                Column(Modifier.fillMaxSize()) {
-                    state.errorMessage?.let { message ->
-                        Box(Modifier.padding(horizontal = 16.dp)) {
-                            Surface(
-                                color = MaterialTheme.colorScheme.primaryContainer,
-                                shape = MaterialTheme.shapes.small,
+        is DataState.Success -> {
+            if (state.products.isEmpty()) {
+                EmptyState(
+                    title = if (state.query.isBlank()) "No products available" else "No matching products",
+                    action = if (state.query.isBlank()) retry else null
+                )
+            } else {
+                CatalogGrid(state, retry, loadNextPage, openProduct)
+            }
+        }
+    }
+}
+
+@Composable
+private fun CatalogGrid(
+    state: CatalogUiState, retry: () -> Unit, loadNextPage: () -> Unit, openProduct: (Int) -> Unit
+) {
+    val gridState = rememberLazyGridState()
+    val coroutineScope = rememberCoroutineScope()
+    val showScrollToTop by remember {
+        derivedStateOf { gridState.firstVisibleItemIndex > 3 }
+    }
+    val shouldLoadMore by remember {
+        derivedStateOf {
+            state.query.isBlank() && state.canLoadMore && !state.isLoadingMore && (gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
+                ?: -1) >= state.products.lastIndex - 5
+        }
+    }
+    LaunchedEffect(shouldLoadMore) {
+        if (shouldLoadMore) loadNextPage()
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize()) {
+            state.errorMessage?.let { message ->
+                Box(Modifier.padding(horizontal = 16.dp)) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        shape = MaterialTheme.shapes.small,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 12.dp)
+                    ) {
+                        Row(
+                            Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                message,
+                                modifier = Modifier.weight(1f),
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            Text(
+                                "Retry",
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 12.dp)
-                            ) {
-                                Row(
-                                    Modifier.padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        message,
-                                        modifier = Modifier.weight(1f),
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-                                    Text(
-                                        "Retry",
-                                        modifier = Modifier
-                                            .clickable(onClick = retry)
-                                            .padding(start = 12.dp),
-                                        color = MaterialTheme.colorScheme.primary,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    Text(
-                        text = if (state.query.isBlank()) "Catalog" else "Search results",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-                    )
-                    LazyVerticalGrid(
-                        columns = GridCells.Adaptive(minSize = 156.dp),
-                        state = gridState,
-                        contentPadding = PaddingValues(
-                            start = 16.dp, end = 16.dp, top = 4.dp, bottom = 88.dp
-                        ),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        items(
-                            items = state.products,
-                            key = { product -> product.id },
-                            contentType = { "product" }) { product ->
-                            ProductCard(
-                                product = product, onClick = { openProduct(product.id) })
-                        }
-                        if (state.isLoadingMore) {
-                            item(span = { GridItemSpan(maxLineSpan) }) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 20.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text("Loading more products...")
-                                }
-                            }
+                                    .clickable(onClick = retry)
+                                    .padding(start = 12.dp),
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
                 }
+            }
+            Text(
+                text = if (state.query.isBlank()) "Catalog" else "Search results",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            )
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 156.dp),
+                state = gridState,
+                contentPadding = PaddingValues(
+                    start = 16.dp, end = 16.dp, top = 4.dp, bottom = 88.dp
+                ),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(
+                    items = state.products,
+                    key = { product -> product.id },
+                    contentType = { "product" }) { product ->
+                    ProductCard(
+                        product = product, onClick = { openProduct(product.id) })
+                }
+                if (state.isLoadingMore) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 20.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("Loading more products...")
+                        }
+                    }
+                }
+            }
+        }
 
-                AnimatedVisibility(
-                    visible = showScrollToTop,
-                    enter = fadeIn(animationSpec = tween(200)) + scaleIn(animationSpec = tween(200)),
-                    exit = fadeOut(animationSpec = tween(200)) + scaleOut(animationSpec = tween(200)),
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(20.dp)
-                ) {
-                    FloatingActionButton(
-                        onClick = {
-                            coroutineScope.launch {
-                                gridState.animateScrollToItem(0)
-                            }
-                        },
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 4.dp)
-                    ) {
-                        Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Scroll to top")
+        AnimatedVisibility(
+            visible = showScrollToTop,
+            enter = fadeIn(animationSpec = tween(200)) + scaleIn(animationSpec = tween(200)),
+            exit = fadeOut(animationSpec = tween(200)) + scaleOut(animationSpec = tween(200)),
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(20.dp)
+        ) {
+            FloatingActionButton(
+                onClick = {
+                    coroutineScope.launch {
+                        gridState.animateScrollToItem(0)
                     }
-                }
+                },
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 4.dp)
+            ) {
+                Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Scroll to top")
             }
         }
     }
