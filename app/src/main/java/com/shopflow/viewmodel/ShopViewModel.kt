@@ -1,7 +1,6 @@
 package com.shopflow.viewmodel
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.shopflow.data.Product
 import com.shopflow.data.remote.DataState
@@ -162,26 +161,5 @@ class ShopViewModel(
     private fun errorMessageFor(error: Throwable): String = when (error) {
         is IOException -> "We could not reach the catalog. Your saved cart is still ready to use."
         else -> "The catalog could not be updated. Please try again."
-    }
-}
-
-private data class CatalogStatus(
-    val dataState: DataState<Unit>,
-    val isLoadingMore: Boolean,
-    val canLoadMore: Boolean,
-    val errorMessage: String?
-)
-
-private data class SearchStatus(
-    val dataState: DataState<List<Product>>?, val query: String
-)
-
-class ShopViewModelFactory(private val repository: ProductRepository) : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(ShopViewModel::class.java)) {
-            return modelClass.cast(ShopViewModel(repository))
-                ?: throw IllegalArgumentException("Unable to cast ViewModel to ${modelClass.name}")
-        }
-        throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
     }
 }

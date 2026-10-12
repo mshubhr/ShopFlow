@@ -172,3 +172,5 @@ ShopFlow uses **Room Database** (`ShopFlowDatabase`, version 1) backed by SQLite
 - **Cached-stock enforcement**: Cart additions and quantity increases are capped at the product stock recorded in the most recently synced catalog. The app cannot perform real-time stock reservation because DummyJSON does not expose a transactional inventory API.
 - **Checkout / Payment Gateway**: Checkout and payment processing still require a merchant account, provider SDK, backend order service, and server-side payment verification. They cannot be implemented securely against DummyJSON alone.
 - **Sync conflict resolution**: Products are a server-owned, read-only catalog cache, so there are no local product edits to conflict with refreshes. If products become editable or two-way synced, add server revisions, ETags, or timestamps and a defined merge policy.
+
+[![Android CI](https://github.com/mshubhr/ShopFlow/actions/workflows/android-ci.yml/badge.svg?branch=main)](https://github.com/mshubhr/ShopFlow/actions/workflows/android-ci.yml)
