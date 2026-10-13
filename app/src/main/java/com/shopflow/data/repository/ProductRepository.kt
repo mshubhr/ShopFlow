@@ -14,7 +14,10 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 class ProductRepository(
-    private val api: DummyJsonApi, private val productDao: ProductDao, private val cartDao: CartDao
+    private val api: DummyJsonApi,
+    private val productDao: ProductDao,
+    private val cartDao: CartDao,
+    private val loadOfflineCatalog: suspend () -> List<ProductDto> = { emptyList() }
 ) {
     private val paginationMutex = Mutex()
     private var nextSkip = 0
@@ -29,8 +32,26 @@ class ProductRepository(
     }
 
     suspend fun refreshProducts(): PageLoadResult = paginationMutex.withLock {
-        val response = api.getProducts(limit = PAGE_SIZE, skip = 0)
-        productDao.replaceAll(response.products.map(ProductDto::toEntity))
+        if (productDao.count() == 0) {
+            val seedProducts = runCatching {
+                loadOfflineCatalog()
+            }.getOrDefault(emptyList())
+
+            if (seedProducts.isNotEmpty()) {
+                productDao.insertAll(
+                    seedProducts.map(ProductDto::toEntity)
+                )
+            }
+        }
+
+        val response = api.getProducts(
+            limit = PAGE_SIZE, skip = 0
+        )
+
+        productDao.insertAll(
+            response.products.map(ProductDto::toEntity)
+        )
+
         nextSkip = response.products.size
         totalProducts = response.total
         PageLoadResult(hasMore = nextSkip < totalProducts)
@@ -90,8 +111,8 @@ class ProductRepository(
             cartDao.delete(productId)
             return CartMutationResult.Updated
         }
-        val stock = productDao.findById(productId)?.stock
-            ?: return CartMutationResult.ProductUnavailable
+        val stock =
+            productDao.findById(productId)?.stock ?: return CartMutationResult.ProductUnavailable
         if (newQuantity > stock) return CartMutationResult.StockLimitReached(stock)
         cartDao.upsert(existing.copy(quantity = newQuantity))
         return CartMutationResult.Updated

@@ -8,9 +8,10 @@ import coil3.SingletonImageLoader
 import coil3.disk.DiskCache
 import coil3.memory.MemoryCache
 import coil3.request.crossfade
-import com.shopflow.data.repository.ProductRepository
 import com.shopflow.data.local.ShopFlowDatabase
 import com.shopflow.data.remote.DummyJsonApi
+import com.shopflow.data.remote.OfflineCatalogLoader
+import com.shopflow.data.repository.ProductRepository
 import okhttp3.OkHttpClient
 import okio.Path.Companion.toOkioPath
 import retrofit2.Retrofit
@@ -28,12 +29,16 @@ class ShopFlowApplication : Application(), SingletonImageLoader.Factory {
     }
 
     val repository: ProductRepository by lazy {
-        val database = Room.databaseBuilder(this, ShopFlowDatabase::class.java, "shopflow.db").build()
+        val database = Room.databaseBuilder(
+            this, ShopFlowDatabase::class.java, "shopflow.db"
+        ).build()
         val client = OkHttpClient.Builder().connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS).build()
         val api = Retrofit.Builder().baseUrl("https://dummyjson.com/").client(client)
             .addConverterFactory(GsonConverterFactory.create()).build()
             .create(DummyJsonApi::class.java)
-        ProductRepository(api, database.productDao(), database.cartDao())
+        ProductRepository(api, database.productDao(), database.cartDao()) {
+            OfflineCatalogLoader(this).load()
+        }
     }
 }

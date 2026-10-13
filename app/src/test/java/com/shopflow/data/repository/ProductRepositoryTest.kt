@@ -1,9 +1,11 @@
 package com.shopflow.data.repository
 
+import androidx.test.core.app.ApplicationProvider
 import com.shopflow.data.Product
 import com.shopflow.data.fakes.FakeCartDao
 import com.shopflow.data.fakes.FakeDummyJsonApi
 import com.shopflow.data.fakes.FakeProductDao
+import com.shopflow.data.remote.OfflineCatalogLoader
 import com.shopflow.data.remote.ProductDto
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -25,7 +27,9 @@ class ProductRepositoryTest {
         fakeApi = FakeDummyJsonApi()
         fakeProductDao = FakeProductDao()
         fakeCartDao = FakeCartDao()
-        repository = ProductRepository(fakeApi, fakeProductDao, fakeCartDao)
+        repository = ProductRepository(fakeApi, fakeProductDao, fakeCartDao) {
+            OfflineCatalogLoader(ApplicationProvider.getApplicationContext()).load()
+        }
     }
 
     @Test

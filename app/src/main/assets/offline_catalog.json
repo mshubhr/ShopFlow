@@ -1,0 +1,16 @@
+{
+  "products": [
+    {
+      "id": 1,
+      "title": "Example Product",
+      "description": "A product available in the bundled catalog.",
+      "price": 29.99,
+      "rating": 4.5,
+      "category": "beauty",
+      "brand": "Example Brand",
+      "stock": 10,
+      "thumbnail": "https://example.com/product.jpg"
+    }
+  ],
+  "total": 1
+}

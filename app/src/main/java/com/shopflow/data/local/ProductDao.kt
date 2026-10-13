@@ -18,15 +18,20 @@ interface ProductDao {
     @Query("SELECT * FROM products WHERE id = :productId")
     suspend fun findById(productId: Int): ProductEntity?
 
-    @Query("""
+    @Query(
+        """
         SELECT * FROM products 
         WHERE title LIKE '%' || :query || '%' 
            OR category LIKE '%' || :query || '%' 
            OR brand LIKE '%' || :query || '%' 
            OR description LIKE '%' || :query || '%'
         ORDER BY title COLLATE NOCASE
-    """)
+    """
+    )
     suspend fun searchLocally(query: String): List<ProductEntity>
+
+    @Query("SELECT COUNT(*) FROM products")
+    suspend fun count(): Int
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(products: List<ProductEntity>)

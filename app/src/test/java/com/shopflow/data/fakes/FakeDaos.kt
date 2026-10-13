@@ -31,6 +31,8 @@ class FakeProductDao : ProductDao {
             it.description.contains(query, ignoreCase = true)
         }.sortedBy { it.title.lowercase() }
 
+    override suspend fun count(): Int = productsState.value.size
+
     override suspend fun insertAll(products: List<ProductEntity>) {
         productsState.value += products.associateBy { it.id }
     }
