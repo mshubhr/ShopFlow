@@ -18,6 +18,7 @@ import com.shopflow.ui.theme.ShopFlowTheme
 import com.shopflow.viewmodel.CartUiState
 import com.shopflow.viewmodel.CatalogUiState
 import com.shopflow.viewmodel.ShopViewModel
+import com.shopflow.viewmodel.SortOption
 
 private sealed interface ShopRoute : NavKey
 private data object CatalogRoute : ShopRoute
@@ -32,6 +33,9 @@ fun ShopFlowApp(viewModel: ShopViewModel) {
         catalogUiState = catalogUiState,
         cartUiState = cartUiState,
         onQueryChanged = viewModel::setQuery,
+        onCategorySelected = viewModel::setCategory,
+        onSortOptionSelected = viewModel::setSortOption,
+        onClearFilters = viewModel::clearFilters,
         onRefreshProducts = viewModel::refreshProducts,
         onLoadNextPage = viewModel::loadNextPage,
         getProduct = { id -> catalogUiState.products.find { it.id == id } },
@@ -46,6 +50,9 @@ fun ShopFlowApp(
     catalogUiState: CatalogUiState,
     cartUiState: CartUiState,
     onQueryChanged: (String) -> Unit = {},
+    onCategorySelected: (String) -> Unit = {},
+    onSortOptionSelected: (SortOption) -> Unit = {},
+    onClearFilters: () -> Unit = {},
     onRefreshProducts: () -> Unit = {},
     onLoadNextPage: () -> Unit = {},
     getProduct: (Int) -> Product? = { id -> catalogUiState.products.find { it.id == id } },
@@ -63,27 +70,36 @@ fun ShopFlowApp(
                     state = catalogUiState,
                     cart = cartUiState,
                     onQueryChanged = onQueryChanged,
+                    onCategorySelected = onCategorySelected,
+                    onSortOptionSelected = onSortOptionSelected,
+                    onClearFilters = onClearFilters,
                     onRefreshProducts = onRefreshProducts,
                     onLoadNextPage = onLoadNextPage,
+                    onAddToCart = onAddToCart,
                     openCart = { backStack.add(CartRoute) },
-                    openProduct = { backStack.add(ProductRoute(it)) })
+                    openProduct = { backStack.add(ProductRoute(it)) }
+                )
             }
             entry<ProductRoute> { route ->
                 ProductDetailScreen(
                     product = getProduct(route.productId),
                     cart = cartUiState,
                     onAddToCart = onAddToCart,
+                    onChangeQuantity = onChangeQuantity,
                     navigateBack = { backStack.removeLastOrNull() },
-                    openCart = { backStack.add(CartRoute) })
+                    openCart = { backStack.add(CartRoute) }
+                )
             }
             entry<CartRoute> {
                 CartScreen(
                     state = cartUiState,
                     onChangeQuantity = onChangeQuantity,
                     onRemoveFromCart = onRemoveFromCart,
-                    navigateBack = { backStack.removeLastOrNull() })
+                    navigateBack = { backStack.removeLastOrNull() }
+                )
             }
-        })
+        }
+    )
 }
 
 private val sampleProducts = listOf(

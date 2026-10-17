@@ -169,4 +169,115 @@ class ShopViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
+
+    @Test
+    fun categoryFilter_filtersCatalogProducts() = runTest {
+        val phoneDto = ProductDto(
+            id = 1,
+            title = "Smart Phone",
+            description = "",
+            price = 500.0,
+            rating = 4.5,
+            category = "electronics",
+            brand = "Apple",
+            stock = 5,
+            thumbnail = ""
+        )
+        val shirtDto = ProductDto(
+            id = 2,
+            title = "Cotton Shirt",
+            description = "",
+            price = 20.0,
+            rating = 4.0,
+            category = "apparel",
+            brand = "Nike",
+            stock = 10,
+            thumbnail = ""
+        )
+        fakeApi.productsToReturn = listOf(phoneDto, shirtDto)
+
+        viewModel = ShopViewModel(repository, searchDebounceMillis = 0L)
+
+        viewModel.catalogUiState.test {
+            expectMostRecentItem()
+
+            viewModel.setCategory("electronics")
+            val filteredState = expectMostRecentItem()
+            assertEquals(1, filteredState.products.size)
+            assertEquals("Smart Phone", filteredState.products[0].title)
+            assertEquals("electronics", filteredState.selectedCategory)
+
+            viewModel.setCategory("All")
+            val allState = expectMostRecentItem()
+            assertEquals(2, allState.products.size)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun sortOption_sortsCatalogProductsCorrectly() = runTest {
+        val p1 = ProductDto(
+            id = 1,
+            title = "B Phone",
+            description = "",
+            price = 500.0,
+            rating = 4.2,
+            category = "electronics",
+            brand = "Brand",
+            stock = 5,
+            thumbnail = ""
+        )
+        val p2 = ProductDto(
+            id = 2,
+            title = "A Laptop",
+            description = "",
+            price = 1000.0,
+            rating = 4.8,
+            category = "electronics",
+            brand = "Brand",
+            stock = 10,
+            thumbnail = ""
+        )
+        val p3 = ProductDto(
+            id = 3,
+            title = "C Watch",
+            description = "",
+            price = 150.0,
+            rating = 3.9,
+            category = "electronics",
+            brand = "Brand",
+            stock = 2,
+            thumbnail = ""
+        )
+        fakeApi.productsToReturn = listOf(p1, p2, p3)
+
+        viewModel = ShopViewModel(repository, searchDebounceMillis = 0L)
+
+        viewModel.catalogUiState.test {
+            expectMostRecentItem()
+
+            // Price low to high
+            viewModel.setSortOption(SortOption.PRICE_LOW_HIGH)
+            val lowToHigh = expectMostRecentItem()
+            assertEquals(listOf(150.0, 500.0, 1000.0), lowToHigh.products.map { it.price })
+
+            // Price high to low
+            viewModel.setSortOption(SortOption.PRICE_HIGH_LOW)
+            val highToLow = expectMostRecentItem()
+            assertEquals(listOf(1000.0, 500.0, 150.0), highToLow.products.map { it.price })
+
+            // Rating high to low
+            viewModel.setSortOption(SortOption.RATING_HIGH_LOW)
+            val topRated = expectMostRecentItem()
+            assertEquals(listOf(4.8, 4.2, 3.9), topRated.products.map { it.rating })
+
+            // Name A to Z
+            viewModel.setSortOption(SortOption.NAME_A_Z)
+            val nameSort = expectMostRecentItem()
+            assertEquals(listOf("A Laptop", "B Phone", "C Watch"), nameSort.products.map { it.title })
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 }
+

@@ -8,6 +8,9 @@ import com.shopflow.data.remote.DataState
 data class CatalogUiState(
     val dataState: DataState<List<Product>> = DataState.Loading,
     val query: String = "",
+    val selectedCategory: String = "All",
+    val availableCategories: List<String> = listOf("All"),
+    val sortOption: SortOption = SortOption.DEFAULT,
     val isLoadingMore: Boolean = false,
     val canLoadMore: Boolean = false,
     val errorMessage: String? = (dataState as? DataState.Error)?.message
@@ -32,6 +35,9 @@ data class CatalogUiState(
             else -> DataState.Success(products)
         },
         query = query,
+        selectedCategory = "All",
+        availableCategories = listOf("All"),
+        sortOption = SortOption.DEFAULT,
         isLoadingMore = isLoadingMore,
         canLoadMore = canLoadMore,
         errorMessage = errorMessage

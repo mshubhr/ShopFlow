@@ -18,16 +18,29 @@ import kotlinx.coroutines.launch
 import java.io.IOException
 import kotlin.time.Duration.Companion.milliseconds
 
+data class FilterParams(
+    val query: String,
+    val category: String,
+    val sortOption: SortOption
+)
+
 class ShopViewModel(
     private val repository: ProductRepository, private val searchDebounceMillis: Long = 300L
 ) : ViewModel() {
     private val query = MutableStateFlow("")
+    private val selectedCategory = MutableStateFlow("All")
+    private val sortOption = MutableStateFlow(SortOption.DEFAULT)
+
     private val catalogDataState = MutableStateFlow<DataState<Unit>>(DataState.Loading)
     private val isLoadingMore = MutableStateFlow(false)
     private val canLoadMore = MutableStateFlow(false)
     private val errorMessage = MutableStateFlow<String?>(null)
 
     private val searchDataState = MutableStateFlow<DataState<List<Product>>?>(null)
+
+    private val filterParams = combine(query, selectedCategory, sortOption) { q, cat, sort ->
+        FilterParams(q, cat, sort)
+    }
 
     private val catalogStatus = combine(
         catalogDataState, isLoadingMore, canLoadMore, errorMessage
@@ -42,34 +55,50 @@ class ShopViewModel(
     }
 
     val catalogUiState: StateFlow<CatalogUiState> = combine(
-        repository.products, query, catalogStatus, searchStatus
-    ) { products, searchQuery, catStatus, sStatus ->
-        val isQueryBlank = searchQuery.trim().isBlank()
+        repository.products, filterParams, catalogStatus, searchStatus
+    ) { products, filters, catStatus, sStatus ->
+        val isQueryBlank = filters.query.trim().isBlank()
+        val availableCategories = listOf("All") + products.map(Product::category).distinct().sortedBy(String::lowercase)
+
         if (isQueryBlank) {
+            val filteredAndSorted = filterAndSort(products, filters.category, filters.sortOption)
             val uiDataState = when (val catState = catStatus.dataState) {
                 is DataState.Loading -> if (products.isEmpty()) DataState.Loading else DataState.Success(
-                    products
+                    filteredAndSorted
                 )
 
                 is DataState.Error -> if (products.isEmpty()) DataState.Error(catState.message) else DataState.Success(
-                    products
+                    filteredAndSorted
                 )
 
-                is DataState.Success -> DataState.Success(products)
+                is DataState.Success -> DataState.Success(filteredAndSorted)
             }
             CatalogUiState(
                 dataState = uiDataState,
-                query = searchQuery,
+                query = filters.query,
+                selectedCategory = filters.category,
+                availableCategories = availableCategories,
+                sortOption = filters.sortOption,
                 isLoadingMore = catStatus.isLoadingMore,
                 canLoadMore = catStatus.canLoadMore,
                 errorMessage = if (products.isNotEmpty()) (catStatus.errorMessage
                     ?: (catStatus.dataState as? DataState.Error)?.message) else null
             )
         } else {
-            val uiDataState = sStatus.dataState ?: DataState.Loading
+            val baseState = sStatus.dataState ?: DataState.Loading
+            val uiDataState = when (baseState) {
+                is DataState.Success -> DataState.Success(
+                    filterAndSort(baseState.data, filters.category, filters.sortOption)
+                )
+                is DataState.Error -> baseState
+                is DataState.Loading -> DataState.Loading
+            }
             CatalogUiState(
                 dataState = uiDataState,
-                query = searchQuery,
+                query = filters.query,
+                selectedCategory = filters.category,
+                availableCategories = availableCategories,
+                sortOption = filters.sortOption,
                 isLoadingMore = false,
                 canLoadMore = false,
                 errorMessage = (uiDataState as? DataState.Error)?.message
@@ -105,6 +134,21 @@ class ShopViewModel(
         if (value.trim().isBlank()) {
             searchDataState.value = null
         }
+    }
+
+    fun setCategory(category: String) {
+        selectedCategory.value = category
+    }
+
+    fun setSortOption(option: SortOption) {
+        sortOption.value = option
+    }
+
+    fun clearFilters() {
+        query.value = ""
+        searchDataState.value = null
+        selectedCategory.value = "All"
+        sortOption.value = SortOption.DEFAULT
     }
 
     private suspend fun performSearch(trimmedQuery: String) {
@@ -156,6 +200,25 @@ class ShopViewModel(
 
     fun removeFromCart(productId: Int) {
         viewModelScope.launch { repository.removeFromCart(productId) }
+    }
+
+    private fun filterAndSort(
+        products: List<Product>,
+        category: String,
+        sort: SortOption
+    ): List<Product> {
+        val categoryFiltered = if (category.equals("All", ignoreCase = true)) {
+            products
+        } else {
+            products.filter { it.category.equals(category, ignoreCase = true) }
+        }
+        return when (sort) {
+            SortOption.DEFAULT -> categoryFiltered
+            SortOption.PRICE_LOW_HIGH -> categoryFiltered.sortedBy(Product::price)
+            SortOption.PRICE_HIGH_LOW -> categoryFiltered.sortedByDescending(Product::price)
+            SortOption.RATING_HIGH_LOW -> categoryFiltered.sortedByDescending(Product::rating)
+            SortOption.NAME_A_Z -> categoryFiltered.sortedBy { it.title.lowercase() }
+        }
     }
 
     private fun errorMessageFor(error: Throwable): String = when (error) {

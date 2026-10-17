@@ -163,6 +163,13 @@ ShopFlow uses **Room Database** (`ShopFlowDatabase`, version 1) backed by SQLite
    - Custom `ImageLoader` configured in `ShopFlowApplication` with a 25% memory cache and a 100MB disk cache to ensure fast rendering of product thumbnails without redundant network overhead.
 5. **Fluid Navigation Stack**:
    - Implemented using AndroidX Navigation 3 with an explicit, mutable state backstack, making back navigation deterministic and decoupled from platform-specific fragments.
+6. **Search, Category Filtering & Multi-Criteria Sorting**:
+   - Dynamic category pills extracted from the offline-first catalog with support for instant local and debounced remote queries.
+   - Comprehensive sorting (Featured, Price: Low to High, Price: High to Low, Top Rated, and Name: A to Z) integrated into state-driven reactive pipelines.
+7. **Production Shopping Experience & Accessibility**:
+   - Shimmer skeleton loading placeholders for smoother perceived performance.
+   - Responsive Compose layouts adapting seamlessly between phones (< 600dp) and tablets/landscape (>= 600dp).
+   - Full TalkBack accessibility semantics, 48dp touch targets, and high-contrast WCAG-compliant Light and Dark Material 3 color schemes.
 
 ---
 
