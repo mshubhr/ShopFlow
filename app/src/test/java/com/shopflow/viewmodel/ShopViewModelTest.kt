@@ -119,7 +119,6 @@ class ShopViewModelTest {
         viewModel.catalogUiState.test {
             expectMostRecentItem()
 
-            // Product 99 has not been downloaded in the paginated catalog
             viewModel.setQuery("Remote Phone")
             testScheduler.advanceUntilIdle()
 
@@ -127,12 +126,10 @@ class ShopViewModelTest {
             assertEquals(1, searchState.products.size)
             assertEquals("Special Remote Phone", searchState.products[0].title)
 
-            // Verify it was saved to Room cache
             val cachedInRoom = fakeProductDao.findById(99)
             org.junit.Assert.assertNotNull(cachedInRoom)
             assertEquals("Special Remote Phone", cachedInRoom?.title)
 
-            // Clear search restores catalog
             viewModel.setQuery("")
             testScheduler.advanceUntilIdle()
 
@@ -256,28 +253,24 @@ class ShopViewModelTest {
         viewModel.catalogUiState.test {
             expectMostRecentItem()
 
-            // Price low to high
             viewModel.setSortOption(SortOption.PRICE_LOW_HIGH)
             val lowToHigh = expectMostRecentItem()
             assertEquals(listOf(150.0, 500.0, 1000.0), lowToHigh.products.map { it.price })
 
-            // Price high to low
             viewModel.setSortOption(SortOption.PRICE_HIGH_LOW)
             val highToLow = expectMostRecentItem()
             assertEquals(listOf(1000.0, 500.0, 150.0), highToLow.products.map { it.price })
 
-            // Rating high to low
             viewModel.setSortOption(SortOption.RATING_HIGH_LOW)
             val topRated = expectMostRecentItem()
             assertEquals(listOf(4.8, 4.2, 3.9), topRated.products.map { it.rating })
 
-            // Name A to Z
             viewModel.setSortOption(SortOption.NAME_A_Z)
             val nameSort = expectMostRecentItem()
-            assertEquals(listOf("A Laptop", "B Phone", "C Watch"), nameSort.products.map { it.title })
+            assertEquals(
+                listOf("A Laptop", "B Phone", "C Watch"), nameSort.products.map { it.title })
 
             cancelAndIgnoreRemainingEvents()
         }
     }
 }
-

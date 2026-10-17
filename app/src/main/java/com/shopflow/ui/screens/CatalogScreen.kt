@@ -29,7 +29,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
@@ -113,8 +112,7 @@ fun CatalogScreen(
     var showSortSheet by remember { mutableStateOf(false) }
 
     Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        topBar = {
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection), topBar = {
             CenterAlignedTopAppBar(
                 title = {
                     Text(
@@ -130,14 +128,12 @@ fun CatalogScreen(
                     scrolledContainerColor = MaterialTheme.colorScheme.surface
                 )
             )
-        }
-    ) { padding ->
+        }) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Search Input
             Box(
                 Modifier
                     .fillMaxWidth()
@@ -173,7 +169,6 @@ fun CatalogScreen(
                 )
             }
 
-            // Categories horizontal scroll
             if (state.availableCategories.size > 1) {
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
@@ -190,7 +185,12 @@ fun CatalogScreen(
                         FilterChip(
                             selected = isSelected,
                             onClick = { onCategorySelected(category) },
-                            label = { Text(formattedCategory, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) },
+                            label = {
+                                Text(
+                                    formattedCategory,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                )
+                            },
                             leadingIcon = if (isSelected) {
                                 {
                                     Icon(
@@ -204,13 +204,11 @@ fun CatalogScreen(
                                 selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
                                 selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
                             ),
-                            shape = MaterialTheme.shapes.medium
-                        )
+                            shape = MaterialTheme.shapes.medium)
                     }
                 }
             }
 
-            // Filter & Sort Bar
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -270,14 +268,10 @@ fun CatalogScreen(
         }
 
         if (showSortSheet) {
-            SortBottomSheet(
-                currentOption = state.sortOption,
-                onSelectOption = {
-                    onSortOptionSelected(it)
-                    showSortSheet = false
-                },
-                onDismiss = { showSortSheet = false }
-            )
+            SortBottomSheet(currentOption = state.sortOption, onSelectOption = {
+                onSortOptionSelected(it)
+                showSortSheet = false
+            }, onDismiss = { showSortSheet = false })
         }
     }
 }
@@ -285,14 +279,11 @@ fun CatalogScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SortBottomSheet(
-    currentOption: SortOption,
-    onSelectOption: (SortOption) -> Unit,
-    onDismiss: () -> Unit
+    currentOption: SortOption, onSelectOption: (SortOption) -> Unit, onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState()
     ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState
+        onDismissRequest = onDismiss, sheetState = sheetState
     ) {
         Column(
             modifier = Modifier
@@ -311,13 +302,9 @@ private fun SortBottomSheet(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { onSelectOption(option) }
-                        .padding(vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                        .padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     RadioButton(
-                        selected = (option == currentOption),
-                        onClick = { onSelectOption(option) }
-                    )
+                        selected = (option == currentOption), onClick = { onSelectOption(option) })
                     Spacer(Modifier.width(12.dp))
                     Text(
                         text = option.displayName,
@@ -354,8 +341,7 @@ private fun CatalogContent(
         is DataState.Error -> {
             if (state.products.isEmpty()) {
                 Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+                    modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
                 ) {
                     EmptyState(
                         title = "Unable to load products",
@@ -372,10 +358,11 @@ private fun CatalogContent(
 
         is DataState.Success -> {
             if (state.products.isEmpty()) {
-                val hasFilter = state.query.isNotBlank() || !state.selectedCategory.equals("All", ignoreCase = true)
+                val hasFilter = state.query.isNotBlank() || !state.selectedCategory.equals(
+                    "All", ignoreCase = true
+                )
                 Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+                    modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
                 ) {
                     EmptyState(
                         title = if (hasFilter) "No matching products found" else "No products available",
@@ -417,7 +404,8 @@ private fun CatalogGrid(
     }
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val minCellWidth = if (maxWidth >= 840.dp) 200.dp else if (maxWidth >= 600.dp) 180.dp else 156.dp
+        val minCellWidth =
+            if (maxWidth >= 840.dp) 200.dp else if (maxWidth >= 600.dp) 180.dp else 156.dp
 
         Box(modifier = Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxSize()) {
@@ -470,14 +458,12 @@ private fun CatalogGrid(
                     items(
                         items = state.products,
                         key = { product -> product.id },
-                        contentType = { "product" }
-                    ) { product ->
+                        contentType = { "product" }) { product ->
                         ProductCard(
                             product = product,
                             canIncrease = cart.canIncrease(product.id),
                             onAddToCart = { onAddToCart(product) },
-                            onClick = { openProduct(product.id) }
-                        )
+                            onClick = { openProduct(product.id) })
                     }
                     if (state.isLoadingMore) {
                         item(span = { GridItemSpan(maxLineSpan) }) {
@@ -544,7 +530,8 @@ private fun ProductCard(
         modifier = modifier
             .fillMaxWidth()
             .semantics {
-                contentDescription = "${product.title}, ${price(product.price)}, rating ${product.rating} stars"
+                contentDescription =
+                    "${product.title}, ${price(product.price)}, rating ${product.rating} stars"
             },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp, pressedElevation = 4.dp),
@@ -564,7 +551,6 @@ private fun ProductCard(
                     contentScale = ContentScale.Fit
                 )
 
-                // Stock badge if low stock
                 if (product.stock in 1..5) {
                     Surface(
                         color = MaterialTheme.colorScheme.tertiaryContainer,
@@ -589,7 +575,6 @@ private fun ProductCard(
                     .fillMaxWidth()
                     .padding(12.dp)
             ) {
-                // Brand label if available
                 if (!product.brand.isNullOrBlank()) {
                     Text(
                         text = product.brand,
@@ -600,7 +585,6 @@ private fun ProductCard(
                     )
                 }
 
-                // Title
                 Text(
                     text = product.title,
                     modifier = Modifier
@@ -615,12 +599,10 @@ private fun ProductCard(
 
                 Spacer(Modifier.height(4.dp))
 
-                // Rating
                 Rating(product.rating)
 
                 Spacer(Modifier.height(8.dp))
 
-                // Price and Quick Add-to-cart button
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,

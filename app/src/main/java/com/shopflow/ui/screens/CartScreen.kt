@@ -75,58 +75,48 @@ fun CartScreen(
 ) {
     var showCheckoutDialog by remember { mutableStateOf(false) }
 
-    Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Scaffold(topBar = {
+        CenterAlignedTopAppBar(
+            title = {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "Shopping Cart",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    if (state.items.isNotEmpty()) {
                         Text(
-                            text = "Shopping Cart",
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        if (state.items.isNotEmpty()) {
-                            Text(
-                                text = "${state.itemCount} ${if (state.itemCount == 1) "item" else "items"}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(
-                        onClick = navigateBack,
-                        modifier = Modifier.semantics { contentDescription = "Back to catalog" }
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
-            )
-        },
-        bottomBar = {
-            // Only show sticky bottom bar on phone screens when items are present
-            if (state.items.isNotEmpty()) {
-                BoxWithConstraints {
-                    if (maxWidth < 600.dp) {
-                        CartTotalBottomBar(
-                            state = state,
-                            onCheckout = { showCheckoutDialog = true }
+                            text = "${state.itemCount} ${if (state.itemCount == 1) "item" else "items"}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
+            }, navigationIcon = {
+                IconButton(
+                    onClick = navigateBack,
+                    modifier = Modifier.semantics { contentDescription = "Back to catalog" }) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                }
+            }, colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = MaterialTheme.colorScheme.background
+            )
+        )
+    }, bottomBar = {
+        if (state.items.isNotEmpty()) {
+            BoxWithConstraints {
+                if (maxWidth < 600.dp) {
+                    CartTotalBottomBar(
+                        state = state, onCheckout = { showCheckoutDialog = true })
+                }
             }
         }
-    ) { padding ->
+    }) { padding ->
         if (state.items.isEmpty()) {
             Box(
                 Modifier
                     .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
+                    .padding(padding), contentAlignment = Alignment.Center
             ) {
                 EmptyState(
                     title = "Your cart is empty",
@@ -143,14 +133,12 @@ fun CartScreen(
                     .padding(padding)
             ) {
                 if (maxWidth >= 600.dp) {
-                    // Tablet / Landscape Split View
                     Row(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(24.dp),
                         horizontalArrangement = Arrangement.spacedBy(24.dp)
                     ) {
-                        // Items list on left
                         LazyColumn(
                             state = rememberLazyListState(),
                             modifier = Modifier
@@ -161,19 +149,16 @@ fun CartScreen(
                             items(
                                 items = state.items,
                                 key = { it.productId },
-                                contentType = { "cart_item" }
-                            ) { item ->
+                                contentType = { "cart_item" }) { item ->
                                 CartItemCard(
                                     item = item,
                                     canIncrease = state.canIncrease(item.productId),
                                     increase = { onChangeQuantity(item.productId, 1) },
                                     decrease = { onChangeQuantity(item.productId, -1) },
-                                    remove = { onRemoveFromCart(item.productId) }
-                                )
+                                    remove = { onRemoveFromCart(item.productId) })
                             }
                         }
 
-                        // Order Summary Card on right
                         Column(
                             modifier = Modifier
                                 .weight(1f)
@@ -181,13 +166,10 @@ fun CartScreen(
                                 .verticalScroll(rememberScrollState())
                         ) {
                             OrderSummaryCard(
-                                state = state,
-                                onCheckout = { showCheckoutDialog = true }
-                            )
+                                state = state, onCheckout = { showCheckoutDialog = true })
                         }
                     }
                 } else {
-                    // Phone Portrait Single Column
                     LazyColumn(
                         state = rememberLazyListState(),
                         modifier = Modifier.fillMaxSize(),
@@ -197,15 +179,13 @@ fun CartScreen(
                         items(
                             items = state.items,
                             key = { it.productId },
-                            contentType = { "cart_item" }
-                        ) { item ->
+                            contentType = { "cart_item" }) { item ->
                             CartItemCard(
                                 item = item,
                                 canIncrease = state.canIncrease(item.productId),
                                 increase = { onChangeQuantity(item.productId, 1) },
                                 decrease = { onChangeQuantity(item.productId, -1) },
-                                remove = { onRemoveFromCart(item.productId) }
-                            )
+                                remove = { onRemoveFromCart(item.productId) })
                         }
                     }
                 }
@@ -213,52 +193,44 @@ fun CartScreen(
         }
 
         if (showCheckoutDialog) {
-            AlertDialog(
-                onDismissRequest = { showCheckoutDialog = false },
-                icon = {
-                    Icon(
-                        Icons.Default.CheckCircle,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(36.dp)
-                    )
-                },
-                title = {
+            AlertDialog(onDismissRequest = { showCheckoutDialog = false }, icon = {
+                Icon(
+                    Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(36.dp)
+                )
+            }, title = {
+                Text(
+                    "Ready to Checkout?",
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleLarge
+                )
+            }, text = {
+                Column {
                     Text(
-                        "Ready to Checkout?",
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleLarge
+                        "Total amount: ${price(state.total)} for ${state.itemCount} items.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold
                     )
-                },
-                text = {
-                    Column {
-                        Text(
-                            "Total amount: ${price(state.total)} for ${state.itemCount} items.",
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            "Your shopping cart is safely saved in local storage (Room Database) and works completely offline without internet.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
-                confirmButton = {
-                    Button(
-                        onClick = { showCheckoutDialog = false },
-                        shape = MaterialTheme.shapes.medium
-                    ) {
-                        Text("Continue Shopping")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showCheckoutDialog = false }) {
-                        Text("Close")
-                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Your shopping cart is safely saved in local storage (Room Database) and works completely offline without internet.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
-            )
+            }, confirmButton = {
+                Button(
+                    onClick = { showCheckoutDialog = false }, shape = MaterialTheme.shapes.medium
+                ) {
+                    Text("Continue Shopping")
+                }
+            }, dismissButton = {
+                TextButton(onClick = { showCheckoutDialog = false }) {
+                    Text("Close")
+                }
+            })
         }
     }
 }
@@ -279,18 +251,15 @@ private fun CartItemCard(
         Row(
             Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(12.dp), verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
                     .size(80.dp)
                     .background(
-                        MaterialTheme.colorScheme.surfaceVariant,
-                        MaterialTheme.shapes.medium
+                        MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.medium
                     )
-                    .clip(MaterialTheme.shapes.medium),
-                contentAlignment = Alignment.Center
+                    .clip(MaterialTheme.shapes.medium), contentAlignment = Alignment.Center
             ) {
                 AsyncImage(
                     model = item.thumbnail,
@@ -323,8 +292,7 @@ private fun CartItemCard(
                         onClick = remove,
                         modifier = Modifier
                             .size(32.dp)
-                            .semantics { contentDescription = "Remove ${item.title} from cart" }
-                    ) {
+                            .semantics { contentDescription = "Remove ${item.title} from cart" }) {
                         Icon(
                             Icons.Default.DeleteOutline,
                             contentDescription = null,
@@ -353,7 +321,6 @@ private fun CartItemCard(
 
                 Spacer(Modifier.height(8.dp))
 
-                // Quantity controls
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -365,11 +332,11 @@ private fun CartItemCard(
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             IconButton(
-                                onClick = decrease,
-                                modifier = Modifier
+                                onClick = decrease, modifier = Modifier
                                     .size(36.dp)
-                                    .semantics { contentDescription = "Decrease quantity of ${item.title}" }
-                            ) {
+                                    .semantics {
+                                        contentDescription = "Decrease quantity of ${item.title}"
+                                    }) {
                                 Icon(
                                     if (item.quantity == 1) Icons.Default.DeleteOutline else Icons.Default.Remove,
                                     contentDescription = null,
@@ -390,8 +357,9 @@ private fun CartItemCard(
                                 enabled = canIncrease,
                                 modifier = Modifier
                                     .size(36.dp)
-                                    .semantics { contentDescription = "Increase quantity of ${item.title}" }
-                            ) {
+                                    .semantics {
+                                        contentDescription = "Increase quantity of ${item.title}"
+                                    }) {
                                 Icon(
                                     Icons.Default.Add,
                                     contentDescription = null,
@@ -479,7 +447,11 @@ private fun OrderSummaryCard(state: CartUiState, onCheckout: () -> Unit) {
                     style = MaterialTheme.typography.bodyLarge
                 )
                 Spacer(Modifier.width(8.dp))
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
             }
         }
     }
@@ -488,8 +460,7 @@ private fun OrderSummaryCard(state: CartUiState, onCheckout: () -> Unit) {
 @Composable
 private fun SummaryLine(label: String, value: String, isValueAccent: Boolean = false) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
+        modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(
             text = label,
@@ -508,8 +479,7 @@ private fun SummaryLine(label: String, value: String, isValueAccent: Boolean = f
 @Composable
 private fun CartTotalBottomBar(state: CartUiState, onCheckout: () -> Unit) {
     Surface(
-        shadowElevation = 12.dp,
-        color = MaterialTheme.colorScheme.surface
+        shadowElevation = 12.dp, color = MaterialTheme.colorScheme.surface
     ) {
         Column(
             modifier = Modifier
@@ -556,7 +526,11 @@ private fun CartTotalBottomBar(state: CartUiState, onCheckout: () -> Unit) {
                     style = MaterialTheme.typography.bodyLarge
                 )
                 Spacer(Modifier.width(8.dp))
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
             }
         }
     }

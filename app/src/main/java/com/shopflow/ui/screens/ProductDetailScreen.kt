@@ -145,7 +145,6 @@ fun ProductDetailScreen(
             ) {
                 BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                     if (maxWidth >= 600.dp) {
-                        // Tablet / Landscape Split View
                         Row(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -188,7 +187,6 @@ fun ProductDetailScreen(
                             }
                         }
                     } else {
-                        // Phone Portrait Single Column
                         val listState = rememberLazyListState()
                         LazyColumn(
                             state = listState,
@@ -321,7 +319,6 @@ private fun ProductHeaderInfo(product: Product) {
 
         Spacer(Modifier.height(8.dp))
 
-        // Ratings bar
         RatingBar(
             rating = product.rating,
             reviewCount = ((product.rating * 27) + product.stock * 3).toInt()
@@ -329,7 +326,6 @@ private fun ProductHeaderInfo(product: Product) {
 
         Spacer(Modifier.height(12.dp))
 
-        // Price
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = price(product.price),
@@ -529,7 +525,6 @@ private fun ProductBottomBar(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Stepper in bottom bar
                     Surface(
                         shape = MaterialTheme.shapes.medium,
                         color = MaterialTheme.colorScheme.surfaceVariant

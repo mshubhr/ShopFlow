@@ -119,7 +119,6 @@ class ProductRepositoryTest {
         assertEquals(1, results.size)
         assertEquals("Galaxy Phone", results[0].title)
 
-        // Verify inserted into Room
         val fromDb = fakeProductDao.findById(55)
         org.junit.Assert.assertNotNull(fromDb)
         assertEquals("Galaxy Phone", fromDb?.title)
