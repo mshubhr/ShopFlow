@@ -40,7 +40,7 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Run unit tests
-        run: ./gradlew testDebugUnitTest
+        run: ./gradlew testDebugUnitTest :server:test
 
       - name: Run Android lint
         run: ./gradlew lintDebug

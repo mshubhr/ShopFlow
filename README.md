@@ -1,18 +1,19 @@
 # ShopFlow
 
-ShopFlow is a modern Android e-commerce application built with Jetpack Compose, Kotlin Coroutines & Flow, Retrofit, and Room. It integrates with the [DummyJSON Products API](https://dummyjson.com/docs/products) to display an interactive product catalog with search, detailed product views, and a reactive local shopping cart.
+ShopFlow is a modern Android e-commerce application built with Jetpack Compose, Kotlin Coroutines & Flow, Ktor, and Room. It uses its **own custom Ktor REST API** (`:server` module) with a high-performance **Ktor Client** (`KtorShopFlowApi`) in place of third-party APIs to deliver a reactive, offline-first product catalog with search, category filtering, multi-criteria sorting, and shopping cart persistence.
 
 ---
 
 ## Table of Contents
 1. [Screenshots](#screenshots)
 2. [Offline Cart](#offline-cart)
-3. [Setup & Build Instructions](#setup--build-instructions)
-4. [Architecture](#architecture)
-5. [Libraries Used](#libraries-used)
-6. [Local Storage Approach](#local-storage-approach)
-7. [Important Design Decisions](#important-design-decisions)
-8. [Production Scope](#production-scope)
+3. [Ktor API Server](#ktor-api-server)
+4. [Setup & Build Instructions](#setup--build-instructions)
+5. [Architecture](#architecture)
+6. [Libraries Used](#libraries-used)
+7. [Local Storage Approach](#local-storage-approach)
+8. [Important Design Decisions](#important-design-decisions)
+9. [Production Scope](#production-scope)
 
 ---
 
@@ -28,6 +29,27 @@ ShopFlow is a modern Android e-commerce application built with Jetpack Compose, 
 
 The cart is persisted locally using Room and remains fully functional
 when the device is offline.
+
+---
+
+## Ktor API Server
+
+ShopFlow includes its own Kotlin Ktor backend server in the `:server` module, replacing the external DummyJSON API.
+
+### Running the Ktor Server
+To start the Ktor API server locally on port 8080:
+```bash
+./gradlew :server:run
+```
+The server will start at `http://0.0.0.0:8080` (accessible from Android emulators at `http://10.0.2.2:8080`).
+
+### Endpoints
+- `GET /` - Server status & API health check
+- `GET /products?limit={limit}&skip={skip}` - Paginated product catalog
+- `GET /products/search?q={query}&limit={limit}&skip={skip}` - Search products by title, category, brand, and description
+- `GET /products/{id}` - Single product details
+- `GET /products/categories` - List of product categories
+- `GET /products/category/{category}` - Filter products by category
 
 ---
 
@@ -60,15 +82,19 @@ The APK will be generated under:
 app/build/outputs/apk/debug/app-debug.apk
 ```
 
-To run unit tests or lint checks:
+To run unit tests across both app and Ktor server, or run lint checks:
 ```bash
-./gradlew testDebugUnitTest
+./gradlew testDebugUnitTest :server:test
 ./gradlew lintDebug
 ```
 
 ### Running on Device / Emulator
 1. Connect a physical Android device with USB debugging enabled or launch an Android Virtual Device (AVD).
-2. Run the application from Android Studio by clicking **Run 'app'** (`Shift + F10`) or via the CLI:
+2. Start the local Ktor server (optional; app gracefully falls back to offline cache if server is offline):
+   ```bash
+   ./gradlew :server:run
+   ```
+3. Run the application from Android Studio by clicking **Run 'app'** (`Shift + F10`) or via the CLI:
    ```bash
    ./gradlew installDebug
    ```
@@ -98,9 +124,11 @@ ShopFlow adheres to official **Android Architecture Guidelines**, implementing a
 │                  ▲                 ▲                   │
 │     (Remote Sync)│                 │(Reactive Flow)    │
 │                  ▼                 ▼                   │
-│          DummyJsonApi (Retrofit)   Room Database       │
-│                                    ├─ ProductDao       │
-│                                    └─ CartDao          │
+│          KtorShopFlowApi           Room Database       │
+│                  ▲                 ├─ ProductDao       │
+│                  │ (HTTP / JSON)   └─ CartDao          │
+│                  ▼                                     │
+│      ShopFlow Ktor Server (:server)                    │
 └────────────────────────────────────────────────────────┘
 ```
 
@@ -109,9 +137,9 @@ ShopFlow adheres to official **Android Architecture Guidelines**, implementing a
   - Type-safe navigation powered by AndroidX `navigation3` with a backstack of sealed route representations (`CatalogRoute`, `ProductRoute`, `CartRoute`).
 - **ViewModel Layer (`ShopViewModel`)**:
   - Manages UI state using Kotlin Coroutines `StateFlow` with `SharingStarted.WhileSubscribed(5_000)` to survive configuration changes and conserve resources when UI is inactive.
-  - Combines repository flows with user search queries to provide fast, responsive filtering.
+  - Combines repository flows with user search queries, category filters, and sorting options to provide fast, responsive filtering.
 - **Data Layer (`ProductRepository`)**:
-  - Acts as mediator between the network API and the local database.
+  - Acts as mediator between our custom Ktor API client and the local database.
   - Employs an offline-first caching policy: queries always stream from the Room database, while network updates refresh the local database cache.
 
 ---
@@ -125,9 +153,9 @@ ShopFlow adheres to official **Android Architecture Guidelines**, implementing a
 | **AndroidX Navigation 3** | `1.2.0` (`runtime` & `ui`) | Next-generation declarative navigation for Compose applications. |
 | **Lifecycle & ViewModel** | `2.11.0` | Lifecycle-aware coroutine scopes and state observation in Compose. |
 | **Room** | `2.8.5` | SQLite object mapping and persistence engine with KSP compiler. |
-| **Retrofit 2** | `3.0.0` | Type-safe REST client for consuming DummyJSON API. |
-| **Gson Converter** | `3.0.0` | Serialization/deserialization for HTTP JSON payloads. |
-| **OkHttp** | `5.5.0` | HTTP engine with customized connect and read timeouts. |
+| **Ktor Client** | `3.1.1` (`core`, `okhttp`, `content-negotiation`) | High-performance asynchronous HTTP client for consuming the custom Ktor API. |
+| **Ktor Server** | `3.1.1` (`core`, `netty`, `cors`, `content-negotiation`) | Custom lightweight backend server powering the product catalog API. |
+| **Kotlinx Serialization** | `1.8.0` | Fast, type-safe JSON serialization/deserialization for API payloads. |
 | **Coil 3** | `3.6.3` (`coil-compose`, `coil-network-okhttp`) | High-performance asynchronous image loading with memory and disk caching. |
 
 ---

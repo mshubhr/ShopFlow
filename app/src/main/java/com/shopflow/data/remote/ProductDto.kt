@@ -1,5 +1,8 @@
 package com.shopflow.data.remote
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class ProductDto(
     val id: Int,
     val title: String,
@@ -7,7 +10,7 @@ data class ProductDto(
     val price: Double,
     val rating: Double,
     val category: String,
-    val brand: String?,
+    val brand: String? = null,
     val stock: Int,
     val thumbnail: String
 )

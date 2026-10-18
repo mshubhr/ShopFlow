@@ -85,3 +85,5 @@ class FakeDummyJsonApi(
         )
     }
 }
+
+typealias FakeShopFlowApi = FakeDummyJsonApi

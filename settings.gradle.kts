@@ -11,3 +11,4 @@ plugins {
 
 rootProject.name = "ShopFlow"
 include(":app")
+include(":server")

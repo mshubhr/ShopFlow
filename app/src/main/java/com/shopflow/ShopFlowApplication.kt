@@ -9,14 +9,10 @@ import coil3.disk.DiskCache
 import coil3.memory.MemoryCache
 import coil3.request.crossfade
 import com.shopflow.data.local.ShopFlowDatabase
-import com.shopflow.data.remote.DummyJsonApi
+import com.shopflow.data.remote.KtorShopFlowApi
 import com.shopflow.data.remote.OfflineCatalogLoader
 import com.shopflow.data.repository.ProductRepository
-import okhttp3.OkHttpClient
 import okio.Path.Companion.toOkioPath
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
-import java.util.concurrent.TimeUnit
 
 class ShopFlowApplication : Application(), SingletonImageLoader.Factory {
     override fun newImageLoader(context: PlatformContext): ImageLoader {
@@ -32,11 +28,13 @@ class ShopFlowApplication : Application(), SingletonImageLoader.Factory {
         val database = Room.databaseBuilder(
             this, ShopFlowDatabase::class.java, "shopflow.db"
         ).build()
-        val client = OkHttpClient.Builder().connectTimeout(10, TimeUnit.SECONDS)
-            .readTimeout(15, TimeUnit.SECONDS).build()
-        val api = Retrofit.Builder().baseUrl("https://dummyjson.com/").client(client)
-            .addConverterFactory(GsonConverterFactory.create()).build()
-            .create(DummyJsonApi::class.java)
+
+        val ktorClient = KtorShopFlowApi.createDefaultHttpClient()
+        val api = KtorShopFlowApi(
+            client = ktorClient,
+            baseUrl = KtorShopFlowApi.DEFAULT_EMULATOR_BASE_URL
+        )
+
         ProductRepository(api, database.productDao(), database.cartDao()) {
             OfflineCatalogLoader(this).load()
         }
