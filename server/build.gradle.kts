@@ -6,10 +6,17 @@ plugins {
 
 application {
     mainClass.set("com.shopflow.server.ShopFlowServerKt")
+    applicationDefaultJvmArgs = listOf(
+        "--enable-native-access=ALL-UNNAMED"
+    )
 }
 
 kotlin {
-    jvmToolchain(11)
+    jvmToolchain(17)
+}
+
+tasks.withType<JavaExec> {
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
 }
 
 dependencies {

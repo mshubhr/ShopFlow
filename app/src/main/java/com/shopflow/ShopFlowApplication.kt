@@ -1,6 +1,7 @@
 package com.shopflow
 
 import android.app.Application
+import com.shopflow.BuildConfig
 import androidx.room.Room
 import coil3.ImageLoader
 import coil3.PlatformContext
@@ -32,7 +33,7 @@ class ShopFlowApplication : Application(), SingletonImageLoader.Factory {
         val ktorClient = KtorShopFlowApi.createDefaultHttpClient()
         val api = KtorShopFlowApi(
             client = ktorClient,
-            baseUrl = KtorShopFlowApi.DEFAULT_EMULATOR_BASE_URL
+            baseUrl = BuildConfig.SERVER_BASE_URL
         )
 
         ProductRepository(api, database.productDao(), database.cartDao()) {

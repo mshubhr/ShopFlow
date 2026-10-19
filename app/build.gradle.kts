@@ -15,9 +15,16 @@ android {
         targetSdk = 37
         versionCode = 1
         versionName = "1.0"
+        val serverBaseUrl = providers.gradleProperty("shopflow.serverUrl")
+            .orElse(providers.environmentVariable("SHOPFLOW_SERVER_URL"))
+            .getOrElse("http://192.168.0.102:8080")
+        buildConfigField("String", "SERVER_BASE_URL", "\"$serverBaseUrl\"")
     }
 
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -25,7 +32,7 @@ android {
     }
 }
 
-kotlin { jvmToolchain(11) }
+kotlin { jvmToolchain(17) }
 
 dependencies {
     implementation(libs.androidx.core.ktx)

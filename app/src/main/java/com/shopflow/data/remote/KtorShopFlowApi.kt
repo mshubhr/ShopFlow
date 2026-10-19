@@ -34,6 +34,7 @@ class KtorShopFlowApi(
     companion object {
         const val DEFAULT_EMULATOR_BASE_URL = "http://10.0.2.2:8080"
         const val DEFAULT_LOCAL_BASE_URL = "http://127.0.0.1:8080"
+        const val DEFAULT_PHYSICAL_BASE_URL = "http://192.168.0.102:8080"
 
         fun createDefaultHttpClient(engine: HttpClientEngine? = null): HttpClient {
             val jsonConfig = Json {

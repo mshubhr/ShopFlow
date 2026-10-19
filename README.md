@@ -41,7 +41,28 @@ To start the Ktor API server locally on port 8080:
 ```bash
 ./gradlew :server:run
 ```
-The server will start at `http://0.0.0.0:8080` (accessible from Android emulators at `http://10.0.2.2:8080`).
+The server binds to all host interfaces on port `8080`. Verify it locally at `http://127.0.0.1:8080/`.
+
+### Connecting a Physical Android Device
+
+`127.0.0.1` and `localhost` on an Android device refer to the device itself, not the computer running Ktor. Debug builds use a configurable HTTP base URL and permit cleartext traffic only in the debug manifest.
+
+1. Put the phone and development computer on the same Wi-Fi network and start the server:
+   ```bash
+   ./gradlew :server:run
+   ```
+2. Find the computer's LAN IPv4 address, then install the debug app with it:
+   ```bash
+   ./gradlew :app:installDebug -Pshopflow.serverUrl=http://YOUR_COMPUTER_LAN_IP:8080
+   ```
+   For example: `http://192.168.0.102:8080`.
+3. If macOS or another host firewall prompts, allow incoming connections for the Java/Ktor process on the private network.
+
+For a USB-connected device, an alternative is ADB reverse tunneling. Run this after connecting the device with USB debugging enabled, then install using the device-local address:
+```bash
+adb reverse tcp:8080 tcp:8080
+./gradlew :app:installDebug -Pshopflow.serverUrl=http://127.0.0.1:8080
+```
 
 ### Endpoints
 - `GET /` - Server status & API health check
