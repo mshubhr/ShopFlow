@@ -27,6 +27,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddShoppingCart
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.Remove
@@ -44,7 +45,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -65,6 +65,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.shopflow.ai.AiShoppingAssistant
+import com.shopflow.ai.model.ProductInsight
 import com.shopflow.data.Product
 import com.shopflow.ui.components.CartButton
 import com.shopflow.ui.components.RatingBar
@@ -79,53 +81,50 @@ fun ProductDetailScreen(
     onAddToCart: (Product) -> Unit,
     onChangeQuantity: (productId: Int, delta: Int) -> Unit = { _, _ -> },
     navigateBack: () -> Unit,
-    openCart: () -> Unit
+    openCart: () -> Unit,
+    openAiAssistant: (String?) -> Unit = {}
 ) {
     var contentVisible by remember(product?.id) { mutableStateOf(false) }
     LaunchedEffect(product?.id) { contentVisible = true }
+    val insight =
+        remember(product?.id) { product?.let { AiShoppingAssistant().generateProductInsight(it) } }
 
-    Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        text = product?.category?.replace('-', ' ')?.replaceFirstChar { it.uppercase() } ?: "Product details",
-                        fontWeight = FontWeight.SemiBold,
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                },
-                navigationIcon = {
-                    IconButton(
-                        onClick = navigateBack,
-                        modifier = Modifier.semantics { contentDescription = "Navigate back" }
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
-                    }
-                },
-                actions = { CartButton(cart.itemCount, openCart) },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
-            )
+    Scaffold(topBar = {
+        CenterAlignedTopAppBar(
+            title = {
+            Text(text = product?.category?.replace('-', ' ')?.replaceFirstChar { it.uppercase() }
+                ?: "Product details",
+                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.titleMedium)
         },
-        bottomBar = {
-            if (product != null) {
-                ProductBottomBar(
-                    product = product,
-                    cart = cart,
-                    onAddToCart = onAddToCart,
-                    onChangeQuantity = onChangeQuantity,
-                    openCart = openCart
-                )
-            }
+            navigationIcon = {
+                IconButton(
+                    onClick = navigateBack,
+                    modifier = Modifier.semantics { contentDescription = "Navigate back" }) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                }
+            },
+            actions = { CartButton(cart.itemCount, openCart) },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = MaterialTheme.colorScheme.background
+            )
+        )
+    }, bottomBar = {
+        if (product != null) {
+            ProductBottomBar(
+                product = product,
+                cart = cart,
+                onAddToCart = onAddToCart,
+                onChangeQuantity = onChangeQuantity,
+                openCart = openCart
+            )
         }
-    ) { padding ->
+    }) { padding ->
         if (product == null) {
             Box(
                 Modifier
                     .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
+                    .padding(padding), contentAlignment = Alignment.Center
             ) {
                 Text(
                     "This product is not in the saved catalog.",
@@ -170,6 +169,12 @@ fun ProductDetailScreen(
                                         .padding(24.dp),
                                     contentScale = ContentScale.Fit
                                 )
+                                StockBadge(
+                                    stock = product.stock,
+                                    modifier = Modifier
+                                        .align(Alignment.TopStart)
+                                        .padding(12.dp)
+                                )
                             }
 
                             Column(
@@ -180,6 +185,11 @@ fun ProductDetailScreen(
                                 verticalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
                                 ProductHeaderInfo(product)
+                                if (insight != null) {
+                                    ProductAiInsightsCard(
+                                        insight = insight,
+                                        onAskAi = { openAiAssistant("Tell me more about ${product.title}") })
+                                }
                                 ProductDeliveryTrustInfo()
                                 ProductDescriptionCard(product.description)
                                 ProductSpecsCard(product)
@@ -228,6 +238,14 @@ fun ProductDetailScreen(
                                 ProductHeaderInfo(product)
                             }
 
+                            if (insight != null) {
+                                item(key = "ai_insights") {
+                                    ProductAiInsightsCard(
+                                        insight = insight,
+                                        onAskAi = { openAiAssistant("Tell me more about ${product.title}") })
+                                }
+                            }
+
                             item(key = "trust") {
                                 ProductDeliveryTrustInfo()
                             }
@@ -259,11 +277,13 @@ private fun StockBadge(stock: Int, modifier: Modifier = Modifier) {
             MaterialTheme.colorScheme.onPrimaryContainer,
             "In Stock ($stock available)"
         )
+
         stock in 1..10 -> Triple(
             MaterialTheme.colorScheme.tertiaryContainer,
             MaterialTheme.colorScheme.onTertiaryContainer,
             "Only $stock left - order soon"
         )
+
         else -> Triple(
             MaterialTheme.colorScheme.errorContainer,
             MaterialTheme.colorScheme.onErrorContainer,
@@ -272,9 +292,7 @@ private fun StockBadge(stock: Int, modifier: Modifier = Modifier) {
     }
 
     Surface(
-        color = bgColor,
-        shape = MaterialTheme.shapes.small,
-        modifier = modifier
+        color = bgColor, shape = MaterialTheme.shapes.small, modifier = modifier
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -363,8 +381,12 @@ private fun ProductDeliveryTrustInfo() {
                 .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceAround
         ) {
-            TrustItem(icon = Icons.Default.LocalShipping, title = "Fast Delivery", subtitle = "2-4 days")
-            TrustItem(icon = Icons.Default.Security, title = "Secure Payment", subtitle = "100% Protected")
+            TrustItem(
+                icon = Icons.Default.LocalShipping, title = "Fast Delivery", subtitle = "2-4 days"
+            )
+            TrustItem(
+                icon = Icons.Default.Security, title = "Secure Payment", subtitle = "100% Protected"
+            )
             TrustItem(icon = Icons.Default.Check, title = "Authentic", subtitle = "Guaranteed")
         }
     }
@@ -443,7 +465,8 @@ private fun ProductSpecsCard(product: Product) {
             )
             Spacer(Modifier.height(12.dp))
 
-            SpecRow("Category", product.category.replace('-', ' ').replaceFirstChar { it.uppercase() })
+            SpecRow(
+                "Category", product.category.replace('-', ' ').replaceFirstChar { it.uppercase() })
             HorizontalDivider(
                 modifier = Modifier.padding(vertical = 8.dp),
                 color = DividerDefaults.color.copy(alpha = 0.5f)
@@ -496,8 +519,7 @@ private fun ProductBottomBar(
     val canIncrease = cart.canIncrease(product.id)
 
     Surface(
-        shadowElevation = 8.dp,
-        color = MaterialTheme.colorScheme.surface
+        shadowElevation = 8.dp, color = MaterialTheme.colorScheme.surface
     ) {
         Row(
             modifier = Modifier
@@ -553,10 +575,13 @@ private fun ProductBottomBar(
                     }
 
                     FilledTonalButton(
-                        onClick = openCart,
-                        shape = MaterialTheme.shapes.medium
+                        onClick = openCart, shape = MaterialTheme.shapes.medium
                     ) {
-                        Icon(Icons.Default.ShoppingCart, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Default.ShoppingCart,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
                         Spacer(Modifier.width(6.dp))
                         Text("View Cart")
                     }
@@ -582,6 +607,103 @@ private fun ProductBottomBar(
                         fontWeight = FontWeight.Bold
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProductAiInsightsCard(
+    insight: ProductInsight, onAskAi: () -> Unit
+) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+        ),
+        shape = MaterialTheme.shapes.medium,
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    shape = MaterialTheme.shapes.small,
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+                Spacer(Modifier.width(8.dp))
+                Column {
+                    Text(
+                        text = "AI Buying Insights",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = insight.headline,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(10.dp))
+
+            insight.highlights.forEach { highlight ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 2.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Text(
+                        text = "•",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(end = 6.dp)
+                    )
+                    Text(
+                        text = highlight,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            FilledTonalButton(
+                onClick = onAskAi,
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.small
+            ) {
+                Icon(
+                    Icons.Default.AutoAwesome,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = "Ask ShopFlow AI about this item",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
         }
     }

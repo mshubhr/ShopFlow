@@ -32,6 +32,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -106,7 +107,8 @@ fun CatalogScreen(
     onLoadNextPage: () -> Unit,
     onAddToCart: (Product) -> Unit = {},
     openCart: () -> Unit,
-    openProduct: (Int) -> Unit
+    openProduct: (Int) -> Unit,
+    openAiAssistant: () -> Unit = {}
 ) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     var showSortSheet by remember { mutableStateOf(false) }
@@ -120,10 +122,19 @@ fun CatalogScreen(
                         fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.titleLarge
                     )
-                },
-                actions = { CartButton(cart.itemCount, openCart) },
-                scrollBehavior = scrollBehavior,
-                colors = TopAppBarDefaults.topAppBarColors(
+                }, actions = {
+                    IconButton(
+                        onClick = openAiAssistant, modifier = Modifier.semantics {
+                            contentDescription = "Open ShopFlow AI Assistant"
+                        }) {
+                        Icon(
+                            imageVector = Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    CartButton(cart.itemCount, openCart)
+                }, scrollBehavior = scrollBehavior, colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
                     scrolledContainerColor = MaterialTheme.colorScheme.surface
                 )

@@ -3,6 +3,8 @@ package com.shopflow.ui.components
 import java.text.NumberFormat
 import java.util.Locale
 
-fun price(amount: Double): String = (ThreadLocal.withInitial {
+private val currencyFormat = ThreadLocal.withInitial {
     NumberFormat.getCurrencyInstance(Locale.US)
-}.get() ?: NumberFormat.getCurrencyInstance(Locale.US)).format(amount)
+}
+
+fun price(amount: Double): String = currencyFormat.get()!!.format(amount)

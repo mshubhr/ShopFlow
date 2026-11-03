@@ -26,11 +26,11 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun EmptyState(
     title: String,
+    modifier: Modifier = Modifier,
     message: String? = null,
     icon: ImageVector? = Icons.Default.SearchOff,
     actionLabel: String = "Retry",
-    action: (() -> Unit)? = null,
-    modifier: Modifier = Modifier
+    action: (() -> Unit)? = null
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -76,8 +76,7 @@ fun EmptyState(
         if (action != null) {
             Spacer(Modifier.height(24.dp))
             Button(
-                onClick = action,
-                shape = MaterialTheme.shapes.medium
+                onClick = action, shape = MaterialTheme.shapes.medium
             ) {
                 Text(actionLabel)
             }

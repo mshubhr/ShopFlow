@@ -2,6 +2,11 @@ package com.shopflow.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.shopflow.ai.AiShoppingAssistant
+import com.shopflow.ai.AiUiState
+import com.shopflow.ai.model.AiMessage
+import com.shopflow.ai.model.AiSender
+import com.shopflow.ai.model.ProductInsight
 import com.shopflow.data.Product
 import com.shopflow.data.remote.DataState
 import com.shopflow.data.repository.ProductRepository
@@ -9,19 +14,20 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.io.IOException
 import kotlin.time.Duration.Companion.milliseconds
 
 data class FilterParams(
-    val query: String,
-    val category: String,
-    val sortOption: SortOption
+    val query: String, val category: String, val sortOption: SortOption
 )
 
 class ShopViewModel(
@@ -58,7 +64,8 @@ class ShopViewModel(
         repository.products, filterParams, catalogStatus, searchStatus
     ) { products, filters, catStatus, sStatus ->
         val isQueryBlank = filters.query.trim().isBlank()
-        val availableCategories = listOf("All") + products.map(Product::category).distinct().sortedBy(String::lowercase)
+        val availableCategories =
+            listOf("All") + products.map(Product::category).distinct().sortedBy(String::lowercase)
 
         if (isQueryBlank) {
             val filteredAndSorted = filterAndSort(products, filters.category, filters.sortOption)
@@ -90,6 +97,7 @@ class ShopViewModel(
                 is DataState.Success -> DataState.Success(
                     filterAndSort(baseState.data, filters.category, filters.sortOption)
                 )
+
                 is DataState.Error -> baseState
                 is DataState.Loading -> DataState.Loading
             }
@@ -110,6 +118,10 @@ class ShopViewModel(
         combine(repository.cartItems, repository.products) { items, products ->
             CartUiState(items, products.associateBy(Product::id, Product::stock))
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CartUiState())
+
+    private val aiAssistant = AiShoppingAssistant()
+    private val _aiUiState = MutableStateFlow(AiUiState())
+    val aiUiState: StateFlow<AiUiState> = _aiUiState.asStateFlow()
 
     init {
         refreshProducts()
@@ -202,10 +214,56 @@ class ShopViewModel(
         viewModelScope.launch { repository.removeFromCart(productId) }
     }
 
+    fun sendAiMessage(prompt: String) {
+        val trimmed = prompt.trim()
+        if (trimmed.isBlank()) return
+
+        val userMessage = AiMessage(
+            sender = AiSender.USER, text = trimmed
+        )
+
+        _aiUiState.update { state ->
+            state.copy(
+                messages = state.messages + userMessage, isGenerating = true
+            )
+        }
+
+        viewModelScope.launch {
+            val currentProducts = repository.products.first()
+            val currentCart = repository.cartItems.first()
+            val response = aiAssistant.generateResponse(trimmed, currentProducts, currentCart)
+
+            _aiUiState.update { state ->
+                state.copy(
+                    messages = state.messages + response,
+                    isGenerating = false,
+                    quickSuggestions = response.suggestedFollowUps.ifEmpty { state.quickSuggestions })
+            }
+        }
+    }
+
+    fun clearAiConversation() {
+        _aiUiState.update { state ->
+            state.copy(
+                messages = listOf(AiUiState.defaultWelcomeMessage),
+                quickSuggestions = AiUiState.defaultSuggestions,
+                isGenerating = false
+            )
+        }
+    }
+
+    fun getOrGenerateProductInsight(product: Product): ProductInsight {
+        val existing = _aiUiState.value.productInsights[product.id]
+        if (existing != null) return existing
+        val insight = aiAssistant.generateProductInsight(product)
+        _aiUiState.update { state ->
+            state.copy(productInsights = state.productInsights + (product.id to insight))
+        }
+        return insight
+    }
+
     private fun filterAndSort(
-        products: List<Product>,
-        category: String,
-        sort: SortOption
+        products: List<Product>, category: String, sort: SortOption
     ): List<Product> {
         val categoryFiltered = if (category.equals("All", ignoreCase = true)) {
             products

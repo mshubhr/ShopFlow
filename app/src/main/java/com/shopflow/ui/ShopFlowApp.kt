@@ -9,8 +9,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
+import com.shopflow.ai.AiUiState
 import com.shopflow.data.CartItem
 import com.shopflow.data.Product
+import com.shopflow.ui.screens.AiAssistantScreen
 import com.shopflow.ui.screens.CartScreen
 import com.shopflow.ui.screens.CatalogScreen
 import com.shopflow.ui.screens.ProductDetailScreen
@@ -24,14 +26,17 @@ private sealed interface ShopRoute : NavKey
 private data object CatalogRoute : ShopRoute
 private data object CartRoute : ShopRoute
 private data class ProductRoute(val productId: Int) : ShopRoute
+private data class AiAssistantRoute(val initialPrompt: String? = null) : ShopRoute
 
 @Composable
 fun ShopFlowApp(viewModel: ShopViewModel) {
     val catalogUiState by viewModel.catalogUiState.collectAsStateWithLifecycle()
     val cartUiState by viewModel.cartUiState.collectAsStateWithLifecycle()
+    val aiUiState by viewModel.aiUiState.collectAsStateWithLifecycle()
     ShopFlowApp(
         catalogUiState = catalogUiState,
         cartUiState = cartUiState,
+        aiUiState = aiUiState,
         onQueryChanged = viewModel::setQuery,
         onCategorySelected = viewModel::setCategory,
         onSortOptionSelected = viewModel::setSortOption,
@@ -41,7 +46,9 @@ fun ShopFlowApp(viewModel: ShopViewModel) {
         getProduct = { id -> catalogUiState.products.find { it.id == id } },
         onAddToCart = viewModel::addToCart,
         onChangeQuantity = viewModel::changeQuantity,
-        onRemoveFromCart = viewModel::removeFromCart
+        onRemoveFromCart = viewModel::removeFromCart,
+        onSendAiMessage = viewModel::sendAiMessage,
+        onClearAiChat = viewModel::clearAiConversation
     )
 }
 
@@ -49,6 +56,7 @@ fun ShopFlowApp(viewModel: ShopViewModel) {
 fun ShopFlowApp(
     catalogUiState: CatalogUiState,
     cartUiState: CartUiState,
+    aiUiState: AiUiState = AiUiState(),
     onQueryChanged: (String) -> Unit = {},
     onCategorySelected: (String) -> Unit = {},
     onSortOptionSelected: (SortOption) -> Unit = {},
@@ -58,7 +66,9 @@ fun ShopFlowApp(
     getProduct: (Int) -> Product? = { id -> catalogUiState.products.find { it.id == id } },
     onAddToCart: (Product) -> Unit = {},
     onChangeQuantity: (productId: Int, delta: Int) -> Unit = { _, _ -> },
-    onRemoveFromCart: (productId: Int) -> Unit = {}
+    onRemoveFromCart: (productId: Int) -> Unit = {},
+    onSendAiMessage: (String) -> Unit = {},
+    onClearAiChat: () -> Unit = {}
 ) {
     val backStack = remember { mutableStateListOf<ShopRoute>(CatalogRoute) }
     NavDisplay(
@@ -77,8 +87,8 @@ fun ShopFlowApp(
                     onLoadNextPage = onLoadNextPage,
                     onAddToCart = onAddToCart,
                     openCart = { backStack.add(CartRoute) },
-                    openProduct = { backStack.add(ProductRoute(it)) }
-                )
+                    openProduct = { backStack.add(ProductRoute(it)) },
+                    openAiAssistant = { backStack.add(AiAssistantRoute()) })
             }
             entry<ProductRoute> { route ->
                 ProductDetailScreen(
@@ -87,19 +97,27 @@ fun ShopFlowApp(
                     onAddToCart = onAddToCart,
                     onChangeQuantity = onChangeQuantity,
                     navigateBack = { backStack.removeLastOrNull() },
-                    openCart = { backStack.add(CartRoute) }
-                )
+                    openCart = { backStack.add(CartRoute) },
+                    openAiAssistant = { prompt -> backStack.add(AiAssistantRoute(prompt)) })
             }
             entry<CartRoute> {
                 CartScreen(
                     state = cartUiState,
                     onChangeQuantity = onChangeQuantity,
                     onRemoveFromCart = onRemoveFromCart,
-                    navigateBack = { backStack.removeLastOrNull() }
-                )
+                    navigateBack = { backStack.removeLastOrNull() })
             }
-        }
-    )
+            entry<AiAssistantRoute> { route ->
+                AiAssistantScreen(
+                    uiState = aiUiState,
+                    initialPrompt = route.initialPrompt,
+                    onSendMessage = onSendAiMessage,
+                    onClearChat = onClearAiChat,
+                    onAddToCart = onAddToCart,
+                    openProduct = { backStack.add(ProductRoute(it)) },
+                    navigateBack = { backStack.removeLastOrNull() })
+            }
+        })
 }
 
 private val sampleProducts = listOf(

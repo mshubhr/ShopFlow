@@ -1,12 +1,10 @@
 package com.shopflow.viewmodel
 
-import androidx.test.core.app.ApplicationProvider
 import app.cash.turbine.test
 import com.shopflow.data.Product
 import com.shopflow.data.fakes.FakeCartDao
 import com.shopflow.data.fakes.FakeDummyJsonApi
 import com.shopflow.data.fakes.FakeProductDao
-import com.shopflow.data.remote.OfflineCatalogLoader
 import com.shopflow.data.remote.ProductDto
 import com.shopflow.data.repository.ProductRepository
 import kotlinx.coroutines.Dispatchers
@@ -36,9 +34,7 @@ class ShopViewModelTest {
         fakeApi = FakeDummyJsonApi()
         fakeProductDao = FakeProductDao()
         fakeCartDao = FakeCartDao()
-        repository = ProductRepository(fakeApi, fakeProductDao, fakeCartDao) {
-            OfflineCatalogLoader(ApplicationProvider.getApplicationContext()).load()
-        }
+        repository = ProductRepository(fakeApi, fakeProductDao, fakeCartDao) { emptyList() }
     }
 
     @After

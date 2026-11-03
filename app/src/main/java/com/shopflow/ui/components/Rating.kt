@@ -25,11 +25,9 @@ import java.util.Locale
 fun Rating(rating: Double, modifier: Modifier = Modifier) {
     val ratingText = remember(rating) { String.format(Locale.US, "%.1f", rating) }
     Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier.semantics {
+        verticalAlignment = Alignment.CenterVertically, modifier = modifier.semantics {
             contentDescription = "Rating $ratingText out of 5 stars"
-        }
-    ) {
+        }) {
         Icon(
             Icons.Default.Star,
             contentDescription = null,
@@ -49,16 +47,15 @@ fun Rating(rating: Double, modifier: Modifier = Modifier) {
 @Composable
 fun RatingBar(
     rating: Double,
+    modifier: Modifier = Modifier,
     reviewCount: Int? = null,
-    modifier: Modifier = Modifier
 ) {
     val ratingText = remember(rating) { String.format(Locale.US, "%.1f", rating) }
     Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier.semantics {
-            contentDescription = "Rating $ratingText out of 5 stars" + (reviewCount?.let { ", $it reviews" } ?: "")
-        }
-    ) {
+        verticalAlignment = Alignment.CenterVertically, modifier = modifier.semantics {
+            contentDescription =
+                "Rating $ratingText out of 5 stars" + (reviewCount?.let { ", $it reviews" } ?: "")
+        }) {
         for (i in 1..5) {
             val icon = when {
                 rating >= i -> Icons.Default.Star
