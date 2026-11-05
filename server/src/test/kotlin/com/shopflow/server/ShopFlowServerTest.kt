@@ -2,7 +2,6 @@ package com.shopflow.server
 
 import com.shopflow.server.data.CatalogSeed
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -35,11 +34,23 @@ class ShopFlowServerTest {
     fun searchProducts_filtersCorrectly() {
         val products = CatalogSeed.products
         val phoneResults = products.filter {
-            it.title.contains("Phone", ignoreCase = true) ||
-            it.category.contains("Phone", ignoreCase = true) ||
-            it.brand?.contains("Phone", ignoreCase = true) == true ||
-            it.description.contains("Phone", ignoreCase = true)
+            it.title.contains("Phone", ignoreCase = true) || it.category.contains(
+                "Phone", ignoreCase = true
+            ) || it.brand?.contains(
+                "Phone", ignoreCase = true
+            ) == true || it.description.contains("Phone", ignoreCase = true)
         }
         assertTrue("Should find phone products in catalog", phoneResults.isNotEmpty())
+    }
+
+    @Test
+    fun serverStatus_includesTotalUsers() {
+        val status = com.shopflow.server.models.ServerStatus(
+            totalProducts = CatalogSeed.products.size, totalUsers = 2
+        )
+        assertEquals("OK", status.status)
+        assertEquals("ShopFlow Ktor API", status.app)
+        assertEquals(CatalogSeed.products.size, status.totalProducts)
+        assertEquals(2, status.totalUsers)
     }
 }

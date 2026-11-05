@@ -28,5 +28,6 @@ data class ServerStatus(
     val status: String = "OK",
     val app: String = "ShopFlow Ktor API",
     val version: String = "1.0.0",
-    val totalProducts: Int
+    val totalProducts: Int,
+    val totalUsers: Int = 0
 )

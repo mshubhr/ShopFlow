@@ -82,4 +82,111 @@ class KtorShopFlowApiTest {
         assertEquals(1, response.total)
         assertTrue(response.products.any { it.title.contains("Earbuds") })
     }
+
+    @Test
+    fun login_postsCredentialsAndReturnsAuthResponse() = runTest {
+        val authJsonResponse = """
+            {
+              "token": "mock-test-token-12345",
+              "user": {
+                "id": "user_1",
+                "username": "demo_user",
+                "email": "demo@shopflow.com",
+                "fullName": "Alex Taylor",
+                "memberSince": "2024-01-15"
+              },
+              "expiresInSeconds": 2592000
+            }
+        """.trimIndent()
+
+        val mockEngine = MockEngine { request ->
+            assertEquals("/auth/login", request.url.encodedPath)
+            respond(
+                content = authJsonResponse,
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json")
+            )
+        }
+
+        val client = KtorShopFlowApi.createDefaultHttpClient(mockEngine)
+        val api = KtorShopFlowApi(client, baseUrl = "http://test.local")
+
+        val response = api.login(LoginRequest("demo_user", "Password123!"))
+        assertEquals("mock-test-token-12345", response.token)
+        assertEquals("user_1", response.user.id)
+        assertEquals("Alex Taylor", response.user.fullName)
+    }
+
+    @Test
+    fun getProfile_sendsBearerTokenAndReturnsProfile() = runTest {
+        val profileJsonResponse = """
+            {
+              "id": "user_1",
+              "username": "demo_user",
+              "email": "demo@shopflow.com",
+              "fullName": "Alex Taylor",
+              "bio": "Online shopping fan",
+              "phone": "+1 555-1234",
+              "address": {
+                "street": "123 Main St",
+                "city": "Springfield",
+                "state": "OR",
+                "postalCode": "97477",
+                "country": "USA"
+              },
+              "memberSince": "2024-01-15"
+            }
+        """.trimIndent()
+
+        val mockEngine = MockEngine { request ->
+            assertEquals("/auth/me", request.url.encodedPath)
+            assertEquals("Bearer sample-token", request.headers[HttpHeaders.Authorization])
+            respond(
+                content = profileJsonResponse,
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json")
+            )
+        }
+
+        val client = KtorShopFlowApi.createDefaultHttpClient(mockEngine)
+        val api = KtorShopFlowApi(client, baseUrl = "http://test.local")
+
+        val profile = api.getProfile("sample-token")
+        assertEquals("user_1", profile.id)
+        assertEquals("Alex Taylor", profile.fullName)
+        assertEquals("Springfield", profile.address?.city)
+    }
+
+    @Test
+    fun updateProfile_sendsPutRequestAndReturnsUpdatedProfile() = runTest {
+        val updatedJsonResponse = """
+            {
+              "id": "user_1",
+              "username": "demo_user",
+              "email": "demo@shopflow.com",
+              "fullName": "Alexander Taylor",
+              "bio": "Updated bio",
+              "memberSince": "2024-01-15"
+            }
+        """.trimIndent()
+
+        val mockEngine = MockEngine { request ->
+            assertEquals("/users/profile", request.url.encodedPath)
+            assertEquals("Bearer sample-token", request.headers[HttpHeaders.Authorization])
+            respond(
+                content = updatedJsonResponse,
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json")
+            )
+        }
+
+        val client = KtorShopFlowApi.createDefaultHttpClient(mockEngine)
+        val api = KtorShopFlowApi(client, baseUrl = "http://test.local")
+
+        val updated = api.updateProfile(
+            "sample-token", UpdateProfileRequest(fullName = "Alexander Taylor", bio = "Updated bio")
+        )
+        assertEquals("Alexander Taylor", updated.fullName)
+        assertEquals("Updated bio", updated.bio)
+    }
 }

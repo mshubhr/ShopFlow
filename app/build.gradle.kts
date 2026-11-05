@@ -17,7 +17,7 @@ android {
         versionName = "1.0"
         val serverBaseUrl = providers.gradleProperty("shopflow.serverUrl")
             .orElse(providers.environmentVariable("SHOPFLOW_SERVER_URL"))
-            .getOrElse("http://192.168.0.102:8080")
+            .getOrElse("http://127.0.0.1:8080")
         buildConfigField("String", "SERVER_BASE_URL", "\"$serverBaseUrl\"")
     }
 
