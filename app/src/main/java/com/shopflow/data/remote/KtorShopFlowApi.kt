@@ -5,6 +5,7 @@ import io.ktor.client.call.body
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.parameter
@@ -19,7 +20,8 @@ import kotlinx.serialization.json.Json
 import java.util.concurrent.TimeUnit
 
 class KtorShopFlowApi(
-    private val client: HttpClient, private val baseUrl: String = DEFAULT_EMULATOR_BASE_URL
+    private val client: HttpClient,
+    private val baseUrl: String = DEFAULT_EMULATOR_BASE_URL
 ) : ShopFlowApi, ShopFlowAuthApi {
 
     override suspend fun getProducts(limit: Int, skip: Int): ProductResponse {
@@ -80,6 +82,58 @@ class KtorShopFlowApi(
             header(HttpHeaders.Authorization, "Bearer $token")
             contentType(ContentType.Application.Json)
             setBody(request)
+        }.body()
+    }
+
+    override suspend fun getCart(token: String?, userId: String?): ServerCartResponse {
+        return client.get("$baseUrl/cart") {
+            if (token != null) header(HttpHeaders.Authorization, "Bearer $token")
+            if (userId != null) header("X-User-Id", userId)
+        }.body()
+    }
+
+    override suspend fun addToCart(
+        request: AddToCartRequest,
+        token: String?,
+        userId: String?
+    ): ServerCartResponse {
+        return client.post("$baseUrl/cart/items") {
+            if (token != null) header(HttpHeaders.Authorization, "Bearer $token")
+            if (userId != null) header("X-User-Id", userId)
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }.body()
+    }
+
+    override suspend fun updateCartItem(
+        productId: Int,
+        request: UpdateCartItemRequest,
+        token: String?,
+        userId: String?
+    ): ServerCartResponse {
+        return client.put("$baseUrl/cart/items/$productId") {
+            if (token != null) header(HttpHeaders.Authorization, "Bearer $token")
+            if (userId != null) header("X-User-Id", userId)
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }.body()
+    }
+
+    override suspend fun removeFromCart(
+        productId: Int,
+        token: String?,
+        userId: String?
+    ): ServerCartResponse {
+        return client.delete("$baseUrl/cart/items/$productId") {
+            if (token != null) header(HttpHeaders.Authorization, "Bearer $token")
+            if (userId != null) header("X-User-Id", userId)
+        }.body()
+    }
+
+    override suspend fun clearCart(token: String?, userId: String?): ServerCartResponse {
+        return client.delete("$baseUrl/cart") {
+            if (token != null) header(HttpHeaders.Authorization, "Bearer $token")
+            if (userId != null) header("X-User-Id", userId)
         }.body()
     }
 

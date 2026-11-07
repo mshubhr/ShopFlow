@@ -28,7 +28,10 @@ class ShopFlowApplication : Application(), SingletonImageLoader.Factory {
     val repository: ProductRepository by lazy {
         val database = Room.databaseBuilder(
             this, ShopFlowDatabase::class.java, "shopflow.db"
-        ).build()
+        )
+            .addMigrations(ShopFlowDatabase.MIGRATION_1_2)
+            .fallbackToDestructiveMigration(dropAllTables = false)
+            .build()
 
         val ktorClient = KtorShopFlowApi.createDefaultHttpClient()
         val api = KtorShopFlowApi(

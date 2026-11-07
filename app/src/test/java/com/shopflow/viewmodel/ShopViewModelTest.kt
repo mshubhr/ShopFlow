@@ -164,6 +164,58 @@ class ShopViewModelTest {
     }
 
     @Test
+    fun switchUser_switchesCartItemsInCartUiState() = runTest {
+        val phone = Product(
+            id = 1,
+            title = "Phone",
+            description = "",
+            price = 500.0,
+            rating = 4.5,
+            category = "electronics",
+            brand = "BrandX",
+            stock = 10,
+            thumbnail = ""
+        )
+        val watch = Product(
+            id = 2,
+            title = "Watch",
+            description = "",
+            price = 200.0,
+            rating = 4.2,
+            category = "electronics",
+            brand = "BrandY",
+            stock = 10,
+            thumbnail = ""
+        )
+
+        viewModel = ShopViewModel(repository)
+
+        viewModel.addToCart(phone)
+
+        viewModel.cartUiState.test {
+            val guestCart = expectMostRecentItem()
+            assertEquals(1, guestCart.itemCount)
+            assertEquals(500.0, guestCart.total, 0.001)
+
+            viewModel.switchUser("user_1")
+            val user1InitialCart = expectMostRecentItem()
+            assertEquals(0, user1InitialCart.itemCount)
+
+            viewModel.addToCart(watch)
+            val user1Cart = expectMostRecentItem()
+            assertEquals(1, user1Cart.itemCount)
+            assertEquals(200.0, user1Cart.total, 0.001)
+
+            viewModel.switchUser("guest")
+            val guestCartAgain = expectMostRecentItem()
+            assertEquals(1, guestCartAgain.itemCount)
+            assertEquals(500.0, guestCartAgain.total, 0.001)
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun categoryFilter_filtersCatalogProducts() = runTest {
         val phoneDto = ProductDto(
             id = 1,

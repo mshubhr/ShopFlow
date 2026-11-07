@@ -189,4 +189,80 @@ class KtorShopFlowApiTest {
         assertEquals("Alexander Taylor", updated.fullName)
         assertEquals("Updated bio", updated.bio)
     }
+
+    @Test
+    fun getCart_sendsBearerTokenAndReturnsCartResponse() = runTest {
+        val cartJsonResponse = """
+            {
+              "userId": "user_1",
+              "items": [
+                {
+                  "productId": 1,
+                  "title": "Wireless Earbuds",
+                  "price": 79.99,
+                  "thumbnail": "https://example.com/earbuds.png",
+                  "quantity": 2
+                }
+              ],
+              "totalItems": 2,
+              "totalPrice": 159.98
+            }
+        """.trimIndent()
+
+        val mockEngine = MockEngine { request ->
+            assertEquals("/cart", request.url.encodedPath)
+            assertEquals("Bearer sample-token", request.headers[HttpHeaders.Authorization])
+            respond(
+                content = cartJsonResponse,
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json")
+            )
+        }
+
+        val client = KtorShopFlowApi.createDefaultHttpClient(mockEngine)
+        val api = KtorShopFlowApi(client, baseUrl = "http://test.local")
+
+        val cart = api.getCart(token = "sample-token")
+        assertEquals("user_1", cart.userId)
+        assertEquals(1, cart.items.size)
+        assertEquals(2, cart.totalItems)
+        assertEquals(159.98, cart.totalPrice, 0.001)
+    }
+
+    @Test
+    fun addToCart_postsItemAndReturnsUpdatedCart() = runTest {
+        val cartJsonResponse = """
+            {
+              "userId": "user_1",
+              "items": [
+                {
+                  "productId": 5,
+                  "title": "Smart Watch",
+                  "price": 199.99,
+                  "thumbnail": "https://example.com/watch.png",
+                  "quantity": 1
+                }
+              ],
+              "totalItems": 1,
+              "totalPrice": 199.99
+            }
+        """.trimIndent()
+
+        val mockEngine = MockEngine { request ->
+            assertEquals("/cart/items", request.url.encodedPath)
+            assertEquals("Bearer sample-token", request.headers[HttpHeaders.Authorization])
+            respond(
+                content = cartJsonResponse,
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json")
+            )
+        }
+
+        val client = KtorShopFlowApi.createDefaultHttpClient(mockEngine)
+        val api = KtorShopFlowApi(client, baseUrl = "http://test.local")
+
+        val cart = api.addToCart(AddToCartRequest(productId = 5, quantity = 1), token = "sample-token")
+        assertEquals(1, cart.totalItems)
+        assertEquals(5, cart.items[0].productId)
+    }
 }

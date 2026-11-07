@@ -119,4 +119,115 @@ class ProductRepositoryTest {
         org.junit.Assert.assertNotNull(fromDb)
         assertEquals("Galaxy Phone", fromDb?.title)
     }
+
+    @Test
+    fun carts_arePersistedPerUser() = runTest {
+        val phone = Product(
+            id = 1,
+            title = "Phone",
+            description = "Desc",
+            price = 500.0,
+            rating = 4.5,
+            category = "electronics",
+            brand = "BrandX",
+            stock = 10,
+            thumbnail = "phone.png"
+        )
+        val laptop = Product(
+            id = 2,
+            title = "Laptop",
+            description = "Desc",
+            price = 1000.0,
+            rating = 4.8,
+            category = "laptops",
+            brand = "BrandY",
+            stock = 5,
+            thumbnail = "laptop.png"
+        )
+
+        repository.setCurrentUser("guest")
+        repository.addToCart(phone)
+
+        val guestItems = repository.cartItems.first()
+        assertEquals(1, guestItems.size)
+        assertEquals(1, guestItems[0].productId)
+
+        repository.setCurrentUser("user_1")
+        val user1InitialItems = repository.cartItems.first()
+        assertTrue(user1InitialItems.isEmpty())
+
+        repository.addToCart(laptop)
+        val user1Items = repository.cartItems.first()
+        assertEquals(1, user1Items.size)
+        assertEquals(2, user1Items[0].productId)
+
+        repository.setCurrentUser("guest")
+        val guestItemsAgain = repository.cartItems.first()
+        assertEquals(1, guestItemsAgain.size)
+        assertEquals(1, guestItemsAgain[0].productId)
+    }
+
+    @Test
+    fun transferCart_mergesItemsFromGuestToUser() = runTest {
+        val phone = Product(
+            id = 1,
+            title = "Phone",
+            description = "Desc",
+            price = 500.0,
+            rating = 4.5,
+            category = "electronics",
+            brand = "BrandX",
+            stock = 10,
+            thumbnail = "phone.png"
+        )
+        fakeProductDao.insertAll(
+            listOf(
+                com.shopflow.data.local.ProductEntity(
+                    id = 1,
+                    title = "Phone",
+                    description = "Desc",
+                    price = 500.0,
+                    rating = 4.5,
+                    category = "electronics",
+                    brand = "BrandX",
+                    stock = 10,
+                    thumbnail = "phone.png"
+                )
+            )
+        )
+
+        repository.addToCart(phone, userId = "guest")
+        assertEquals(1, repository.observeCartForUser("guest").first().size)
+        assertTrue(repository.observeCartForUser("user_1").first().isEmpty())
+
+        repository.transferCart(fromUserId = "guest", toUserId = "user_1")
+
+        assertTrue(repository.observeCartForUser("guest").first().isEmpty())
+        val user1Items = repository.observeCartForUser("user_1").first()
+        assertEquals(1, user1Items.size)
+        assertEquals(1, user1Items[0].productId)
+    }
+
+    @Test
+    fun clearCart_onlyClearsSpecifiedUser() = runTest {
+        val phone = Product(
+            id = 1,
+            title = "Phone",
+            description = "Desc",
+            price = 500.0,
+            rating = 4.5,
+            category = "electronics",
+            brand = "BrandX",
+            stock = 10,
+            thumbnail = "phone.png"
+        )
+
+        repository.addToCart(phone, userId = "user_1")
+        repository.addToCart(phone, userId = "user_2")
+
+        repository.clearCart(userId = "user_1")
+
+        assertTrue(repository.observeCartForUser("user_1").first().isEmpty())
+        assertEquals(1, repository.observeCartForUser("user_2").first().size)
+    }
 }

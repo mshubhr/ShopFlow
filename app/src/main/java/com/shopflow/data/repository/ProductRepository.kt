@@ -6,9 +6,15 @@ import com.shopflow.data.local.CartDao
 import com.shopflow.data.local.CartItemEntity
 import com.shopflow.data.local.ProductDao
 import com.shopflow.data.local.ProductEntity
-import com.shopflow.data.remote.ShopFlowApi
 import com.shopflow.data.remote.ProductDto
+import com.shopflow.data.remote.ShopFlowApi
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -17,19 +23,37 @@ class ProductRepository(
     private val api: ShopFlowApi,
     private val productDao: ProductDao,
     private val cartDao: CartDao,
+    private val initialUserId: String = CartItemEntity.DEFAULT_USER_ID,
     private val loadOfflineCatalog: suspend () -> List<ProductDto> = { emptyList() }
 ) {
     private val paginationMutex = Mutex()
     private var nextSkip = 0
     private var totalProducts = Int.MAX_VALUE
 
+    private val _currentUserId = MutableStateFlow(initialUserId)
+    val currentUserId: StateFlow<String> = _currentUserId.asStateFlow()
+
+    fun setCurrentUser(userId: String) {
+        _currentUserId.value = userId.trim().ifEmpty { CartItemEntity.DEFAULT_USER_ID }
+    }
+
+    fun getCurrentUserId(): String = _currentUserId.value
+
     val products: Flow<List<Product>> = productDao.observeAll().map { entities ->
         entities.map(ProductEntity::toProduct)
     }
 
-    val cartItems: Flow<List<CartItem>> = cartDao.observeAll().map { entities ->
-        entities.map(CartItemEntity::toCartItem)
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val cartItems: Flow<List<CartItem>> = _currentUserId.flatMapLatest { userId ->
+        cartDao.observeAll(userId).map { entities ->
+            entities.map(CartItemEntity::toCartItem)
+        }
     }
+
+    fun observeCartForUser(userId: String): Flow<List<CartItem>> =
+        cartDao.observeAll(userId).map { entities ->
+            entities.map(CartItemEntity::toCartItem)
+        }
 
     suspend fun refreshProducts(): PageLoadResult = paginationMutex.withLock {
         if (productDao.count() == 0) {
@@ -87,13 +111,17 @@ class ProductRepository(
     suspend fun findProductById(productId: Int): Product? =
         productDao.findById(productId)?.toProduct()
 
-    suspend fun addToCart(product: Product): CartMutationResult {
-        val existing = cartDao.findById(product.id)
+    suspend fun addToCart(
+        product: Product,
+        userId: String = _currentUserId.value
+    ): CartMutationResult {
+        val existing = cartDao.findById(userId, product.id)
         if ((existing?.quantity ?: 0) >= product.stock) {
             return CartMutationResult.StockLimitReached(product.stock)
         }
         cartDao.upsert(
             CartItemEntity(
+                userId = userId,
                 productId = product.id,
                 title = product.title,
                 price = product.price,
@@ -104,11 +132,15 @@ class ProductRepository(
         return CartMutationResult.Updated
     }
 
-    suspend fun changeQuantity(productId: Int, delta: Int): CartMutationResult {
-        val existing = cartDao.findById(productId) ?: return CartMutationResult.ProductUnavailable
+    suspend fun changeQuantity(
+        productId: Int,
+        delta: Int,
+        userId: String = _currentUserId.value
+    ): CartMutationResult {
+        val existing = cartDao.findById(userId, productId) ?: return CartMutationResult.ProductUnavailable
         val newQuantity = existing.quantity + delta
         if (newQuantity <= 0) {
-            cartDao.delete(productId)
+            cartDao.delete(userId, productId)
             return CartMutationResult.Updated
         }
         val stock =
@@ -118,7 +150,31 @@ class ProductRepository(
         return CartMutationResult.Updated
     }
 
-    suspend fun removeFromCart(productId: Int) = cartDao.delete(productId)
+    suspend fun removeFromCart(
+        productId: Int,
+        userId: String = _currentUserId.value
+    ) = cartDao.delete(userId, productId)
+
+    suspend fun clearCart(
+        userId: String = _currentUserId.value
+    ) = cartDao.clear(userId)
+
+    suspend fun transferCart(fromUserId: String, toUserId: String) {
+        if (fromUserId == toUserId) return
+        val items = cartDao.observeAll(fromUserId).first()
+        for (item in items) {
+            val existing = cartDao.findById(toUserId, item.productId)
+            val productStock = productDao.findById(item.productId)?.stock ?: item.quantity
+            val mergedQty = minOf((existing?.quantity ?: 0) + item.quantity, productStock)
+            cartDao.upsert(
+                item.copy(
+                    userId = toUserId,
+                    quantity = mergedQty
+                )
+            )
+            cartDao.delete(fromUserId, item.productId)
+        }
+    }
 
     private companion object {
         const val PAGE_SIZE = 24
@@ -150,5 +206,9 @@ private fun ProductEntity.toProduct() = Product(
 )
 
 private fun CartItemEntity.toCartItem() = CartItem(
-    productId = productId, title = title, price = price, thumbnail = thumbnail, quantity = quantity
+    productId = productId,
+    title = title,
+    price = price,
+    thumbnail = thumbnail,
+    quantity = quantity
 )

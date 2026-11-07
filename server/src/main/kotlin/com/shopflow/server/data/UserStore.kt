@@ -5,12 +5,15 @@ import com.shopflow.server.models.AuthResponse
 import com.shopflow.server.models.ChangePasswordRequest
 import com.shopflow.server.models.LoginRequest
 import com.shopflow.server.models.RegisterRequest
+import com.shopflow.server.models.ServerCartItemDto
+import com.shopflow.server.models.ServerCartResponse
 import com.shopflow.server.models.UpdateProfileRequest
 import com.shopflow.server.models.UserProfileDto
 import com.shopflow.server.security.SecurityUtils
 import java.time.LocalDate
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.math.roundToInt
 
 data class StoredUser(
     val id: String,
@@ -43,6 +46,7 @@ class UserStore {
     private val userIdByUsername = ConcurrentHashMap<String, String>()
     private val userIdByEmail = ConcurrentHashMap<String, String>()
     private val activeTokens = ConcurrentHashMap<String, String>()
+    private val userCarts = ConcurrentHashMap<String, ConcurrentHashMap<Int, ServerCartItemDto>>()
 
     init {
         seedInitialUsers()
@@ -240,12 +244,89 @@ class UserStore {
         return Result.success(Unit)
     }
 
+    fun getCart(userId: String): ServerCartResponse {
+        val cartMap = userCarts[userId] ?: emptyMap()
+        val items = cartMap.values.sortedBy { it.title.lowercase() }
+        val totalItems = items.sumOf { it.quantity }
+        val rawTotal = items.sumOf { it.price * it.quantity }
+        val totalPrice = (rawTotal * 100.0).roundToInt() / 100.0
+        return ServerCartResponse(
+            userId = userId, items = items, totalItems = totalItems, totalPrice = totalPrice
+        )
+    }
+
+    @Synchronized
+    fun addToCart(userId: String, productId: Int, quantity: Int = 1): Result<ServerCartResponse> {
+        if (quantity <= 0) {
+            return Result.failure(IllegalArgumentException("Quantity must be greater than 0"))
+        }
+        val product = CatalogSeed.products.find { it.id == productId } ?: return Result.failure(
+            NoSuchElementException("Product with id $productId not found")
+        )
+
+        val cart = userCarts.computeIfAbsent(userId) { ConcurrentHashMap() }
+        val currentQty = cart[productId]?.quantity ?: 0
+        val targetQty = currentQty + quantity
+        if (targetQty > product.stock) {
+            return Result.failure(
+                IllegalArgumentException("Cannot add $quantity item(s). Requested total ($targetQty) exceeds available stock (${product.stock})")
+            )
+        }
+        cart[productId] = ServerCartItemDto(
+            productId = product.id,
+            title = product.title,
+            price = product.price,
+            thumbnail = product.thumbnail,
+            quantity = targetQty
+        )
+        return Result.success(getCart(userId))
+    }
+
+    @Synchronized
+    fun updateCartItem(userId: String, productId: Int, quantity: Int): Result<ServerCartResponse> {
+        val cart = userCarts.computeIfAbsent(userId) { ConcurrentHashMap() }
+        if (quantity <= 0) {
+            cart.remove(productId)
+            return Result.success(getCart(userId))
+        }
+        val product = CatalogSeed.products.find { it.id == productId } ?: return Result.failure(
+            NoSuchElementException("Product with id $productId not found")
+        )
+
+        if (quantity > product.stock) {
+            return Result.failure(
+                IllegalArgumentException("Requested quantity ($quantity) exceeds available stock (${product.stock})")
+            )
+        }
+        cart[productId] = ServerCartItemDto(
+            productId = product.id,
+            title = product.title,
+            price = product.price,
+            thumbnail = product.thumbnail,
+            quantity = quantity
+        )
+        return Result.success(getCart(userId))
+    }
+
+    @Synchronized
+    fun removeFromCart(userId: String, productId: Int): ServerCartResponse {
+        userCarts[userId]?.remove(productId)
+        return getCart(userId)
+    }
+
+    @Synchronized
+    fun clearCart(userId: String): ServerCartResponse {
+        userCarts[userId]?.clear()
+        return getCart(userId)
+    }
+
     @Synchronized
     fun resetToDefaults() {
         usersById.clear()
         userIdByUsername.clear()
         userIdByEmail.clear()
         activeTokens.clear()
+        userCarts.clear()
         seedInitialUsers()
     }
 }

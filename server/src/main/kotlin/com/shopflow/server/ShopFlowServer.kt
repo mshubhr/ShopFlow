@@ -2,6 +2,7 @@ package com.shopflow.server
 
 import com.shopflow.server.data.CatalogSeed
 import com.shopflow.server.data.UserStore
+import com.shopflow.server.models.AddToCartRequest
 import com.shopflow.server.models.AuthErrorResponse
 import com.shopflow.server.models.AuthMessageResponse
 import com.shopflow.server.models.ChangePasswordRequest
@@ -9,6 +10,7 @@ import com.shopflow.server.models.LoginRequest
 import com.shopflow.server.models.RegisterRequest
 import com.shopflow.server.models.ServerProductResponse
 import com.shopflow.server.models.ServerStatus
+import com.shopflow.server.models.UpdateCartItemRequest
 import com.shopflow.server.models.UpdateProfileRequest
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
@@ -23,6 +25,7 @@ import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.cors.routing.CORS
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
+import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.put
@@ -47,6 +50,16 @@ fun ApplicationCall.extractAuthToken(): String? {
     return request.headers["X-Auth-Token"]?.trim()?.ifEmpty { null }
 }
 
+fun ApplicationCall.extractUserId(userStore: UserStore): String {
+    val token = extractAuthToken()
+    if (token != null) {
+        val userId = userStore.getUserIdByToken(token)
+        if (userId != null) return userId
+    }
+    return request.headers["X-User-Id"]?.trim()?.ifEmpty { null }
+        ?: request.queryParameters["userId"]?.trim()?.ifEmpty { null } ?: "guest"
+}
+
 fun Application.shopFlowModule(userStore: UserStore = globalUserStore) {
     install(ContentNegotiation) {
         json(Json {
@@ -66,6 +79,8 @@ fun Application.shopFlowModule(userStore: UserStore = globalUserStore) {
         allowMethod(HttpMethod.Options)
         allowHeader(HttpHeaders.Authorization)
         allowHeader(HttpHeaders.ContentType)
+        allowHeader("X-User-Id")
+        allowHeader("X-Auth-Token")
     }
 
     val products = CatalogSeed.products
@@ -99,9 +114,7 @@ fun Application.shopFlowModule(userStore: UserStore = globalUserStore) {
                         is IllegalArgumentException -> HttpStatusCode.BadRequest
                         else -> HttpStatusCode.BadRequest
                     }
-                    call.respond(
-                        status, AuthErrorResponse(error.message ?: "Registration failed")
-                    )
+                    call.respond(status, AuthErrorResponse(error.message ?: "Registration failed"))
                 })
             }
 
@@ -331,6 +344,91 @@ fun Application.shopFlowModule(userStore: UserStore = globalUserStore) {
                     AuthErrorResponse(error.message ?: "Failed to update profile")
                 )
             })
+        }
+
+        route("/cart") {
+            get {
+                val userId = call.extractUserId(userStore)
+                call.respond(HttpStatusCode.OK, userStore.getCart(userId))
+            }
+
+            post("/items") {
+                val userId = call.extractUserId(userStore)
+                val request = try {
+                    call.receive<AddToCartRequest>()
+                } catch (e: Exception) {
+                    call.respond(
+                        HttpStatusCode.BadRequest,
+                        AuthErrorResponse("Invalid add to cart payload", e.message)
+                    )
+                    return@post
+                }
+
+                userStore.addToCart(userId, request.productId, request.quantity)
+                    .fold(onSuccess = { cartResponse ->
+                        call.respond(HttpStatusCode.OK, cartResponse)
+                    }, onFailure = { error ->
+                        val status = when (error) {
+                            is NoSuchElementException -> HttpStatusCode.NotFound
+                            is IllegalArgumentException -> HttpStatusCode.BadRequest
+                            else -> HttpStatusCode.BadRequest
+                        }
+                        call.respond(
+                            status, AuthErrorResponse(error.message ?: "Failed to add to cart")
+                        )
+                    })
+            }
+
+            put("/items/{productId}") {
+                val userId = call.extractUserId(userStore)
+                val productId = call.parameters["productId"]?.toIntOrNull()
+                if (productId == null) {
+                    call.respond(HttpStatusCode.BadRequest, AuthErrorResponse("Invalid product ID"))
+                    return@put
+                }
+
+                val request = try {
+                    call.receive<UpdateCartItemRequest>()
+                } catch (e: Exception) {
+                    call.respond(
+                        HttpStatusCode.BadRequest,
+                        AuthErrorResponse("Invalid update cart item payload", e.message)
+                    )
+                    return@put
+                }
+
+                userStore.updateCartItem(userId, productId, request.quantity)
+                    .fold(onSuccess = { cartResponse ->
+                        call.respond(HttpStatusCode.OK, cartResponse)
+                    }, onFailure = { error ->
+                        val status = when (error) {
+                            is NoSuchElementException -> HttpStatusCode.NotFound
+                            is IllegalArgumentException -> HttpStatusCode.BadRequest
+                            else -> HttpStatusCode.BadRequest
+                        }
+                        call.respond(
+                            status, AuthErrorResponse(error.message ?: "Failed to update cart item")
+                        )
+                    })
+            }
+
+            delete("/items/{productId}") {
+                val userId = call.extractUserId(userStore)
+                val productId = call.parameters["productId"]?.toIntOrNull()
+                if (productId == null) {
+                    call.respond(HttpStatusCode.BadRequest, AuthErrorResponse("Invalid product ID"))
+                    return@delete
+                }
+
+                val cartResponse = userStore.removeFromCart(userId, productId)
+                call.respond(HttpStatusCode.OK, cartResponse)
+            }
+
+            delete {
+                val userId = call.extractUserId(userStore)
+                val cartResponse = userStore.clearCart(userId)
+                call.respond(HttpStatusCode.OK, cartResponse)
+            }
         }
 
         get("/products") {

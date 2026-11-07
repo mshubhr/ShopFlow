@@ -202,6 +202,12 @@ class ShopViewModel(
         }
     }
 
+    val currentUserId: StateFlow<String> = repository.currentUserId
+
+    fun switchUser(userId: String) {
+        repository.setCurrentUser(userId)
+    }
+
     fun addToCart(product: Product) {
         viewModelScope.launch { repository.addToCart(product) }
     }
@@ -212,6 +218,10 @@ class ShopViewModel(
 
     fun removeFromCart(productId: Int) {
         viewModelScope.launch { repository.removeFromCart(productId) }
+    }
+
+    fun clearCart() {
+        viewModelScope.launch { repository.clearCart() }
     }
 
     fun sendAiMessage(prompt: String) {

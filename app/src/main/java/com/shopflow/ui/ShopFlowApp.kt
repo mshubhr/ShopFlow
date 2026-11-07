@@ -33,10 +33,14 @@ fun ShopFlowApp(viewModel: ShopViewModel) {
     val catalogUiState by viewModel.catalogUiState.collectAsStateWithLifecycle()
     val cartUiState by viewModel.cartUiState.collectAsStateWithLifecycle()
     val aiUiState by viewModel.aiUiState.collectAsStateWithLifecycle()
+    val currentUserId by viewModel.currentUserId.collectAsStateWithLifecycle()
     ShopFlowApp(
         catalogUiState = catalogUiState,
         cartUiState = cartUiState,
         aiUiState = aiUiState,
+        currentUserId = currentUserId,
+        onSwitchUser = viewModel::switchUser,
+        onClearCart = viewModel::clearCart,
         onQueryChanged = viewModel::setQuery,
         onCategorySelected = viewModel::setCategory,
         onSortOptionSelected = viewModel::setSortOption,
@@ -57,6 +61,9 @@ fun ShopFlowApp(
     catalogUiState: CatalogUiState,
     cartUiState: CartUiState,
     aiUiState: AiUiState = AiUiState(),
+    currentUserId: String = "guest",
+    onSwitchUser: (String) -> Unit = {},
+    onClearCart: () -> Unit = {},
     onQueryChanged: (String) -> Unit = {},
     onCategorySelected: (String) -> Unit = {},
     onSortOptionSelected: (SortOption) -> Unit = {},
@@ -103,6 +110,9 @@ fun ShopFlowApp(
             entry<CartRoute> {
                 CartScreen(
                     state = cartUiState,
+                    currentUserId = currentUserId,
+                    onSwitchUser = onSwitchUser,
+                    onClearCart = onClearCart,
                     onChangeQuantity = onChangeQuantity,
                     onRemoveFromCart = onRemoveFromCart,
                     navigateBack = { backStack.removeLastOrNull() })

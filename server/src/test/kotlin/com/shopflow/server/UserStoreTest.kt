@@ -250,4 +250,55 @@ class UserStoreTest {
         assertFalse(SecurityUtils.isValidUsername("a"))
         assertFalse(SecurityUtils.isValidUsername("user with spaces"))
     }
+
+    @Test
+    fun cart_persistsPerUser() {
+        val res1 = userStore.addToCart("user_1", productId = 1, quantity = 2)
+        assertTrue(res1.isSuccess)
+        val cart1 = res1.getOrThrow()
+        assertEquals("user_1", cart1.userId)
+        assertEquals(1, cart1.items.size)
+        assertEquals(2, cart1.totalItems)
+        assertEquals(19.98, cart1.totalPrice, 0.001)
+
+        val cart2Initial = userStore.getCart("user_2")
+        assertEquals("user_2", cart2Initial.userId)
+        assertTrue(cart2Initial.items.isEmpty())
+
+        val res2 = userStore.addToCart("user_2", productId = 2, quantity = 1)
+        assertTrue(res2.isSuccess)
+        val cart2 = res2.getOrThrow()
+        assertEquals(1, cart2.items.size)
+        assertEquals(2, cart2.items[0].productId)
+        assertEquals(19.99, cart2.totalPrice, 0.001)
+
+        val cart1Current = userStore.getCart("user_1")
+        assertEquals(1, cart1Current.items.size)
+        assertEquals(1, cart1Current.items[0].productId)
+        assertEquals(2, cart1Current.items[0].quantity)
+
+        val updateRes = userStore.updateCartItem("user_1", productId = 1, quantity = 3)
+        assertTrue(updateRes.isSuccess)
+        assertEquals(3, updateRes.getOrThrow().totalItems)
+
+        val removeRes = userStore.removeFromCart("user_1", productId = 1)
+        assertTrue(removeRes.items.isEmpty())
+
+        val clearRes = userStore.clearCart("user_2")
+        assertTrue(clearRes.items.isEmpty())
+    }
+
+    @Test
+    fun cart_exceedStockFails() {
+        val res = userStore.addToCart("user_1", productId = 1, quantity = 1000)
+        assertTrue(res.isFailure)
+        assertTrue(res.exceptionOrNull() is IllegalArgumentException)
+    }
+
+    @Test
+    fun cart_productNotFoundFails() {
+        val res = userStore.addToCart("user_1", productId = 999999, quantity = 1)
+        assertTrue(res.isFailure)
+        assertTrue(res.exceptionOrNull() is NoSuchElementException)
+    }
 }

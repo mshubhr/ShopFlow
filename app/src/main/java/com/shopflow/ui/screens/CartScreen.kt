@@ -60,6 +60,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.FilterChip
 import com.shopflow.data.CartItem
 import com.shopflow.ui.components.EmptyState
 import com.shopflow.ui.components.price
@@ -69,6 +71,9 @@ import com.shopflow.viewmodel.CartUiState
 @Composable
 fun CartScreen(
     state: CartUiState,
+    currentUserId: String = "guest",
+    onSwitchUser: (String) -> Unit = {},
+    onClearCart: () -> Unit = {},
     onChangeQuantity: (productId: Int, delta: Int) -> Unit,
     onRemoveFromCart: (productId: Int) -> Unit,
     navigateBack: () -> Unit
@@ -98,6 +103,18 @@ fun CartScreen(
                     modifier = Modifier.semantics { contentDescription = "Back to catalog" }) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
                 }
+            }, actions = {
+                if (state.items.isNotEmpty()) {
+                    IconButton(
+                        onClick = onClearCart,
+                        modifier = Modifier.semantics { contentDescription = "Clear cart" }) {
+                        Icon(
+                            Icons.Default.DeleteOutline,
+                            contentDescription = "Clear cart",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
             }, colors = TopAppBarDefaults.topAppBarColors(
                 containerColor = MaterialTheme.colorScheme.background
             )
@@ -112,26 +129,42 @@ fun CartScreen(
             }
         }
     }) { padding ->
-        if (state.items.isEmpty()) {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .padding(padding), contentAlignment = Alignment.Center
-            ) {
-                EmptyState(
-                    title = "Your cart is empty",
-                    message = "Looks like you haven't added anything to your cart yet. Explore our wide selection and find great deals!",
-                    icon = Icons.Default.RemoveShoppingCart,
-                    actionLabel = "Start Shopping",
-                    action = navigateBack
-                )
-            }
-        } else {
-            BoxWithConstraints(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-            ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            UserCartSelector(
+                currentUserId = currentUserId,
+                onSwitchUser = onSwitchUser
+            )
+
+            if (state.items.isEmpty()) {
+                val userName = when (currentUserId) {
+                    "user_1" -> "Alex Taylor's"
+                    "user_2" -> "Jane Doe's"
+                    else -> "Your"
+                }
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    EmptyState(
+                        title = "$userName cart is empty",
+                        message = "Looks like you haven't added anything to this cart yet. Explore our wide selection and find great deals!",
+                        icon = Icons.Default.RemoveShoppingCart,
+                        actionLabel = "Start Shopping",
+                        action = navigateBack
+                    )
+                }
+            } else {
+                BoxWithConstraints(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f)
+                ) {
                 if (maxWidth >= 600.dp) {
                     Row(
                         modifier = Modifier
@@ -191,6 +224,7 @@ fun CartScreen(
                 }
             }
         }
+        }
 
         if (showCheckoutDialog) {
             AlertDialog(onDismissRequest = { showCheckoutDialog = false }, icon = {
@@ -231,6 +265,50 @@ fun CartScreen(
                     Text("Close")
                 }
             })
+        }
+    }
+}
+
+@Composable
+private fun UserCartSelector(
+    currentUserId: String,
+    onSwitchUser: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val users = listOf(
+        "guest" to "Guest",
+        "user_1" to "Alex Taylor",
+        "user_2" to "Jane Doe"
+    )
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "Cart for:",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        users.forEach { (id, label) ->
+            val isSelected = currentUserId == id
+            FilterChip(
+                selected = isSelected,
+                onClick = { onSwitchUser(id) },
+                label = { Text(label) },
+                leadingIcon = if (isSelected) {
+                    {
+                        Icon(
+                            Icons.Default.Person,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                } else null
+            )
         }
     }
 }

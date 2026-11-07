@@ -43,21 +43,40 @@ class FakeProductDao : ProductDao {
 }
 
 class FakeCartDao : CartDao {
-    private val cartItemsState = MutableStateFlow<Map<Int, CartItemEntity>>(emptyMap())
+    private val cartItemsState = MutableStateFlow<Map<Pair<String, Int>, CartItemEntity>>(emptyMap())
+
+    override fun observeAll(userId: String): Flow<List<CartItemEntity>> =
+        cartItemsState.map { map ->
+            map.filterKeys { it.first == userId }.values.sortedBy { c -> c.title.lowercase() }
+        }
 
     override fun observeAll(): Flow<List<CartItemEntity>> =
-        cartItemsState.map { it.values.sortedBy { c -> c.title.lowercase() } }
+        observeAll(CartItemEntity.DEFAULT_USER_ID)
+
+    override suspend fun findById(userId: String, productId: Int): CartItemEntity? =
+        cartItemsState.value[userId to productId]
 
     override suspend fun findById(productId: Int): CartItemEntity? =
-        cartItemsState.value[productId]
+        findById(CartItemEntity.DEFAULT_USER_ID, productId)
 
     override suspend fun upsert(item: CartItemEntity) {
-        cartItemsState.value += (item.productId to item)
+        cartItemsState.value += ((item.userId to item.productId) to item)
+    }
+
+    override suspend fun delete(userId: String, productId: Int) {
+        cartItemsState.value -= (userId to productId)
     }
 
     override suspend fun delete(productId: Int) {
-        cartItemsState.value -= productId
+        delete(CartItemEntity.DEFAULT_USER_ID, productId)
     }
+
+    override suspend fun clear(userId: String) {
+        cartItemsState.value = cartItemsState.value.filterKeys { it.first != userId }
+    }
+
+    override suspend fun count(userId: String): Int =
+        cartItemsState.value.count { it.key.first == userId }
 }
 
 class FakeDummyJsonApi(

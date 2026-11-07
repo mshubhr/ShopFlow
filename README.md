@@ -32,8 +32,10 @@ shopping cart persistence.
 
 ## Offline Cart
 
-The cart is persisted locally using Room and remains fully functional
-when the device is offline.
+The cart is persisted locally using Room and partitioned per user (`userId`, `productId`). Both
+guest visitors and logged-in profiles (`demo_user`, `jane_doe`) maintain independent, persistent
+shopping carts that remain fully functional offline and survive app restarts and device reboots.
+Users can switch profiles seamlessly in the cart screen with immediate state updates.
 
 ---
 
@@ -109,6 +111,16 @@ adb reverse tcp:8080 tcp:8080
 - `PUT /users/profile` (or `PUT /profile`) - Update profile fields (`fullName`, `bio`, `phone`,
   `avatarUrl`, `address`).
 - `POST /users/profile/change-password` - Change password with `currentPassword` and `newPassword`.
+
+#### Carts (Per-User)
+
+- `GET /cart` - Retrieve shopping cart for the authenticated user (via
+  `Authorization: Bearer <token>` or `X-User-Id` header).
+- `POST /cart/items` - Add product to the user's cart (`productId`, `quantity`). Validates inventory
+  stock.
+- `PUT /cart/items/{productId}` - Update item quantity in the user's cart.
+- `DELETE /cart/items/{productId}` - Remove item from the user's cart.
+- `DELETE /cart` - Clear all items from the user's cart.
 
 > **Pre-seeded Demo Accounts**:
 > - Username: `demo_user` \| Email: `demo@shopflow.com` \| Password: `Password123!` (Alex Taylor)
